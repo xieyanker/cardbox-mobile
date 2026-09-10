@@ -32,6 +32,7 @@ type Card = {
 };
 
 const STORAGE_KEY = 'cardbox.cards.v1';
+const LOCK_TIMEOUT_KEY = 'cardbox.lock.timeout.v1';
 const tones = ['#2F59C7', '#141820', '#F4C63D', '#287A6C', '#B84E4E', '#5368A5'];
 const starterCards: Card[] = [
   { id: '1', name: '招商银行', number: '6225 1234 5678 1234', cvv: '123', expiry: '12/30', note: '日常消费', tone: '#2F59C7' },
@@ -103,6 +104,8 @@ export default function HomeScreen() {
   const [password, setPassword] = useState('');
   const [appLocked, setAppLocked] = useState(false);
   const backgroundAt = useRef<number | null>(null);
+  const [lockTimeoutMs, setLockTimeoutMs] = useState(60_000);
+  const [lockSettingsOpen, setLockSettingsOpen] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then(async (saved) => {
@@ -116,6 +119,12 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    AsyncStorage.getItem(LOCK_TIMEOUT_KEY).then((saved) => {
+      if (saved) setLockTimeoutMs(Number(saved));
+    });
+  }, []);
+
+  useEffect(() => {
     encryptLocal(JSON.stringify(cards)).then((encrypted) => AsyncStorage.setItem(STORAGE_KEY, encrypted));
     if (selected >= cards.length) setSelected(Math.max(0, cards.length - 1));
   }, [cards, selected]);
@@ -124,14 +133,21 @@ export default function HomeScreen() {
     if (Platform.OS === 'web') return;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background' || nextState === 'inactive') backgroundAt.current = Date.now();
-      if (nextState === 'active' && backgroundAt.current && Date.now() - backgroundAt.current > 60_000) {
+      if (nextState === 'active' && backgroundAt.current && lockTimeoutMs > 0 && Date.now() - backgroundAt.current > lockTimeoutMs) {
         setAppLocked(true);
         setShowSensitive(false);
         backgroundAt.current = null;
       }
     });
     return () => subscription.remove();
-  }, []);
+  }, [lockTimeoutMs]);
+
+  const setLockTimeout = (timeout: number) => {
+    setLockTimeoutMs(timeout);
+    AsyncStorage.setItem(LOCK_TIMEOUT_KEY, String(timeout));
+    setLockSettingsOpen(false);
+  };
+  const lockTimeoutLabel = lockTimeoutMs === 0 ? '不自动锁定' : lockTimeoutMs === 1 ? '立即锁定' : `${lockTimeoutMs / 60_000} 分钟后锁定`;
 
   const current = cards[selected];
   const countLabel = useMemo(() => `${cards.length ? selected + 1 : 0} / ${cards.length}`, [cards.length, selected]);
@@ -242,7 +258,7 @@ export default function HomeScreen() {
           <Pressable style={styles.moreButton} onPress={() => setScreen(screen === 'backup' ? 'home' : 'backup')}><Text style={styles.more}>•••</Text></Pressable>
         </View>
 
-        {screen === 'backup' ? <BackupMenu onBack={() => setScreen('home')} onExport={() => { setBackupMode('export'); setBackupOpen(true); }} onImport={() => { setBackupMode('import'); setBackupOpen(true); }} onSort={() => setScreen('all')} /> : screen === 'all' ? <AllCards cards={cards} onBack={() => setScreen('home')} onOpen={(i) => { setSelected(i); setScreen('home'); }} onMove={moveCard} onAdd={openNew} /> : (
+        {screen === 'backup' ? <BackupMenu onBack={() => setScreen('home')} onExport={() => { setBackupMode('export'); setBackupOpen(true); }} onImport={() => { setBackupMode('import'); setBackupOpen(true); }} onSort={() => setScreen('all')} onLockSettings={() => setLockSettingsOpen(true)} lockTimeoutLabel={lockTimeoutLabel} /> : screen === 'all' ? <AllCards cards={cards} onBack={() => setScreen('home')} onOpen={(i) => { setSelected(i); setScreen('home'); }} onMove={moveCard} onAdd={openNew} /> : (
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             {current ? <>
               <Pressable {...swipeResponder.panHandlers} onPress={() => setSelected((selected + cards.length - 1) % cards.length)} onLongPress={() => setScreen('all')}>
@@ -265,14 +281,14 @@ export default function HomeScreen() {
 
       <Modal visible={editorOpen} animationType="slide" transparent onRequestClose={() => setEditorOpen(false)}><Editor card={editing} onClose={() => setEditorOpen(false)} onSave={saveCard} onPickImage={chooseImage} /></Modal>
       <Modal visible={backupOpen} animationType="slide" transparent onRequestClose={() => setBackupOpen(false)}><View style={styles.modalBackdrop}><View style={styles.sheet}><Text style={styles.sheetTitle}>{backupMode === 'export' ? '导出备份' : '导入备份'}</Text><Text style={styles.sheetDesc}>{backupMode === 'export' ? '全部卡片资料与卡面将打包为一个加密备份文件。' : '选择 .cardbox 文件，并输入备份密码恢复卡包。'}</Text><TextInput value={password} onChangeText={setPassword} placeholder="输入备份密码" secureTextEntry style={styles.input} /><Pressable style={styles.primaryButton} onPress={backupMode === 'export' ? exportBackup : importBackup}><Text style={styles.primaryText}>{backupMode === 'export' ? '生成加密备份' : '选择文件并导入'}</Text></Pressable><Pressable onPress={() => setBackupOpen(false)}><Text style={styles.cancelText}>取消</Text></Pressable></View></View></Modal>
-      {appLocked ? <View style={lockStyles.lockOverlay}><View style={lockStyles.lockCard}><Text style={lockStyles.lockIcon}>▣</Text><Text style={lockStyles.lockTitle}>CardBox 已锁定</Text><Text style={lockStyles.lockDesc}>应用在后台停留超过 1 分钟，验证身份后继续。</Text><Pressable style={styles.primaryButton} onPress={unlockApp}><Text style={styles.primaryText}>指纹 / 面容解锁</Text></Pressable></View></View> : null}
+      <Modal visible={lockSettingsOpen} animationType="slide" transparent onRequestClose={() => setLockSettingsOpen(false)}><View style={styles.modalBackdrop}><View style={styles.sheet}><Text style={styles.sheetTitle}>自动锁定时间</Text><Text style={styles.sheetDesc}>应用切到后台后，超过设定时间需要重新验证身份。</Text><Pressable style={styles.menuItem} onPress={() => setLockTimeout(1)}><Text style={styles.menuIcon}>◷</Text><View><Text style={styles.menuItemTitle}>立即锁定</Text><Text style={styles.menuItemDesc}>离开应用后马上锁定</Text></View></Pressable><Pressable style={styles.menuItem} onPress={() => setLockTimeout(60_000)}><Text style={styles.menuIcon}>1</Text><View><Text style={styles.menuItemTitle}>1 分钟</Text><Text style={styles.menuItemDesc}>推荐的安全与便利平衡</Text></View></Pressable><Pressable style={styles.menuItem} onPress={() => setLockTimeout(300_000)}><Text style={styles.menuIcon}>5</Text><View><Text style={styles.menuItemTitle}>5 分钟</Text><Text style={styles.menuItemDesc}>适合频繁查看卡片</Text></View></Pressable><Pressable style={styles.menuItem} onPress={() => setLockTimeout(0)}><Text style={styles.menuIcon}>×</Text><View><Text style={styles.menuItemTitle}>不自动锁定</Text><Text style={styles.menuItemDesc}>不建议在他人可接触设备上使用</Text></View></Pressable><Pressable onPress={() => setLockSettingsOpen(false)}><Text style={styles.cancelText}>取消</Text></Pressable></View></View></Modal>{appLocked ? <View style={lockStyles.lockOverlay}><View style={lockStyles.lockCard}><Text style={lockStyles.lockIcon}>▣</Text><Text style={lockStyles.lockTitle}>CardBox 已锁定</Text><Text style={lockStyles.lockDesc}>应用在后台停留超过 1 分钟，验证身份后继续。</Text><Pressable style={styles.primaryButton} onPress={unlockApp}><Text style={styles.primaryText}>指纹 / 面容解锁</Text></Pressable></View></View> : null}
     </ScreenContainer>
   );
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) { return <View style={styles.infoRow}><Text style={styles.rowLabel}>{label}</Text><Text style={styles.rowValue}>{value}</Text></View>; }
 function EmptyState({ onAdd }: { onAdd: () => void }) { return <View style={styles.empty}><Text style={styles.emptyIcon}>▱</Text><Text style={styles.emptyTitle}>还没有卡片</Text><Text style={styles.emptyDesc}>点击下方 +，添加第一张卡片</Text><Pressable style={styles.primaryButton} onPress={onAdd}><Text style={styles.primaryText}>添加卡片</Text></Pressable></View>; }
-function BackupMenu({ onBack, onExport, onImport, onSort }: { onBack: () => void; onExport: () => void; onImport: () => void; onSort: () => void }) { return <View style={styles.menu}><Pressable onPress={onBack}><Text style={styles.back}>‹  返回</Text></Pressable><Text style={styles.menuTitle}>更多功能</Text><Pressable style={styles.menuItem} onPress={onExport}><Text style={styles.menuIcon}>⇧</Text><View><Text style={styles.menuItemTitle}>导出备份</Text><Text style={styles.menuItemDesc}>密码保护全部卡片资料</Text></View></Pressable><Pressable style={styles.menuItem} onPress={onImport}><Text style={styles.menuIcon}>⇩</Text><View><Text style={styles.menuItemTitle}>导入备份</Text><Text style={styles.menuItemDesc}>换手机后恢复整个卡包</Text></View></Pressable><Pressable style={styles.menuItem} onPress={onSort}><Text style={styles.menuIcon}>☷</Text><View><Text style={styles.menuItemTitle}>排序管理</Text><Text style={styles.menuItemDesc}>调整卡片的自定义顺序</Text></View></Pressable><View style={styles.localTip}><Text style={styles.localTipTitle}>离线模式</Text><Text style={styles.localTipDesc}>所有数据只保存在本机，不需要账号或网络权限。</Text></View></View>; }
+function BackupMenu({ onBack, onExport, onImport, onSort, onLockSettings, lockTimeoutLabel }: { onBack: () => void; onExport: () => void; onImport: () => void; onSort: () => void; onLockSettings: () => void; lockTimeoutLabel: string }) { return <View style={styles.menu}><Pressable onPress={onBack}><Text style={styles.back}>‹  返回</Text></Pressable><Text style={styles.menuTitle}>更多功能</Text><Pressable style={styles.menuItem} onPress={onExport}><Text style={styles.menuIcon}>⇧</Text><View><Text style={styles.menuItemTitle}>导出备份</Text><Text style={styles.menuItemDesc}>密码保护全部卡片资料</Text></View></Pressable><Pressable style={styles.menuItem} onPress={onImport}><Text style={styles.menuIcon}>⇩</Text><View><Text style={styles.menuItemTitle}>导入备份</Text><Text style={styles.menuItemDesc}>换手机后恢复整个卡包</Text></View></Pressable><Pressable style={styles.menuItem} onPress={onSort}><Text style={styles.menuIcon}>☷</Text><View><Text style={styles.menuItemTitle}>排序管理</Text><Text style={styles.menuItemDesc}>调整卡片的自定义顺序</Text></View></Pressable><Pressable style={styles.menuItem} onPress={onLockSettings}><Text style={styles.menuIcon}>◉</Text><View><Text style={styles.menuItemTitle}>自动锁定</Text><Text style={styles.menuItemDesc}>{lockTimeoutLabel}</Text></View></Pressable><View style={styles.localTip}><Text style={styles.localTipTitle}>离线模式</Text><Text style={styles.localTipDesc}>所有数据只保存在本机，不需要账号或网络权限。</Text></View></View>; }
 function SortableCardItem({ card, index, onOpen, onMove }: { card: Card; index: number; onOpen: () => void; onMove: (index: number, direction: -1 | 1) => void }) {
   const responder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
