@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -118,6 +119,26 @@ export default function HomeScreen() {
 
   const current = cards[selected];
   const countLabel = useMemo(() => `${cards.length ? selected + 1 : 0} / ${cards.length}`, [cards.length, selected]);
+  const swipeResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onPanResponderRelease: (_, gesture) => {
+      if (Math.abs(gesture.dx) < 45 || cards.length < 2) return;
+      setSelected((index) => gesture.dx < 0 ? (index + 1) % cards.length : (index + cards.length - 1) % cards.length);
+    },
+  });
+
+  const toggleSensitive = async () => {
+    if (showSensitive || Platform.OS === 'web') return setShowSensitive(!showSensitive);
+    try {
+      const LocalAuthentication = require('expo-local-authentication') as typeof import('expo-local-authentication');
+      const [hasHardware, isEnrolled] = await Promise.all([LocalAuthentication.hasHardwareAsync(), LocalAuthentication.isEnrolledAsync()]);
+      if (!hasHardware || !isEnrolled) return Alert.alert('未设置生物识别', '请先在系统设置中录入指纹或面容，也可以继续使用隐藏信息模式。');
+      const result = await LocalAuthentication.authenticateAsync({ promptMessage: '验证身份后显示卡片敏感信息', disableDeviceFallback: false });
+      if (result.success) setShowSensitive(true);
+    } catch {
+      Alert.alert('暂不可用', '当前设备无法调用生物识别验证。');
+    }
+  };
 
   const openNew = () => {
     setEditing({ id: Date.now().toString(), name: '', number: '', cvv: '', expiry: '', note: '', tone: tones[cards.length % tones.length] });
@@ -195,12 +216,12 @@ export default function HomeScreen() {
         {screen === 'backup' ? <BackupMenu onBack={() => setScreen('home')} onExport={() => { setBackupMode('export'); setBackupOpen(true); }} onImport={() => { setBackupMode('import'); setBackupOpen(true); }} onSort={() => setScreen('all')} /> : screen === 'all' ? <AllCards cards={cards} onBack={() => setScreen('home')} onOpen={(i) => { setSelected(i); setScreen('home'); }} onMove={moveCard} onAdd={openNew} /> : (
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             {current ? <>
-              <Pressable onPress={() => setSelected((selected + cards.length - 1) % cards.length)} onLongPress={() => setScreen('all')}>
+              <Pressable {...swipeResponder.panHandlers} onPress={() => setSelected((selected + cards.length - 1) % cards.length)} onLongPress={() => setScreen('all')}>
                 <CardFace card={current} />
               </Pressable>
               <View style={styles.counterRow}><Text style={styles.counter}>{countLabel}</Text><Text style={styles.hint}>左右滑动切换 · 长按管理顺序</Text></View>
               <View style={styles.infoCard}>
-                <View style={styles.infoHeader}><View><Text style={styles.infoName}>{current.name || '未命名卡片'}</Text><Text style={styles.infoNote}>{current.note || '暂无备注'}</Text></View><Pressable onPress={() => setShowSensitive(!showSensitive)} style={styles.visibility}><Text>{showSensitive ? '隐藏' : '显示'}</Text></Pressable></View>
+                <View style={styles.infoHeader}><View><Text style={styles.infoName}>{current.name || '未命名卡片'}</Text><Text style={styles.infoNote}>{current.note || '暂无备注'}</Text></View><Pressable onPress={toggleSensitive} style={styles.visibility}><Text>{showSensitive ? '隐藏' : '验证后显示'}</Text></Pressable></View>
                 <InfoRow label="卡号" value={showSensitive ? current.number : maskNumber(current.number)} />
                 <InfoRow label="CVV" value={showSensitive ? current.cvv : '•••'} />
                 <InfoRow label="到期" value={current.expiry || '--/--'} />
