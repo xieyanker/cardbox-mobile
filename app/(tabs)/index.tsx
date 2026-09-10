@@ -3,6 +3,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useState } from 'react';
+import { decryptBackup, decryptLocal, encryptBackup, encryptLocal } from '@/lib/cardbox-security';
 import {
   Alert,
   Image,
@@ -43,6 +44,32 @@ const maskNumber = (value: string) => {
   return `•••• •••• •••• ${digits.slice(-4)}`;
 };
 
+async function buildBackupCards(cards: Card[]) {
+  return Promise.all(cards.map(async (card) => {
+    if (!card.image || Platform.OS === 'web' || card.image.startsWith('data:')) return card;
+    try {
+      const imageData = await FileSystem.readAsStringAsync(card.image, { encoding: FileSystem.EncodingType.Base64 });
+      return { ...card, imageData };
+    } catch {
+      return card;
+    }
+  }));
+}
+
+async function restoreBackupCards(cards: Array<Card & { imageData?: string }>) {
+  return Promise.all(cards.map(async (card) => {
+    if (!card.imageData || Platform.OS === 'web') return card;
+    try {
+      const uri = `${FileSystem.documentDirectory}cardbox-card-${card.id}.jpg`;
+      await FileSystem.writeAsStringAsync(uri, card.imageData, { encoding: FileSystem.EncodingType.Base64 });
+      const { imageData: _imageData, ...rest } = card;
+      return { ...rest, image: uri };
+    } catch {
+      return card;
+    }
+  }));
+}
+
 function CardFace({ card, compact = false }: { card: Card; compact?: boolean }) {
   return (
     <View style={[styles.cardFace, { backgroundColor: card.tone }, compact && styles.compactFace]}>
@@ -74,13 +101,18 @@ export default function HomeScreen() {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved) setCards(JSON.parse(saved));
+    AsyncStorage.getItem(STORAGE_KEY).then(async (saved) => {
+      if (!saved) return;
+      try {
+        setCards(JSON.parse(await decryptLocal(saved)));
+      } catch {
+        try { setCards(JSON.parse(saved)); } catch { /* keep starter cards */ }
+      }
     });
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    encryptLocal(JSON.stringify(cards)).then((encrypted) => AsyncStorage.setItem(STORAGE_KEY, encrypted));
     if (selected >= cards.length) setSelected(Math.max(0, cards.length - 1));
   }, [cards, selected]);
 
@@ -124,7 +156,8 @@ export default function HomeScreen() {
 
   const exportBackup = async () => {
     if (!password.trim()) return Alert.alert('需要密码', '请输入备份密码后再导出。');
-    const payload = JSON.stringify({ version: 1, encrypted: true, passwordHint: password.length, cards });
+    const backupCards = await buildBackupCards(cards);
+    const payload = encryptBackup(JSON.stringify({ version: 2, cards: backupCards }), password);
     const uri = `${FileSystem.cacheDirectory}CardBox_${new Date().toISOString().slice(0, 10)}.cardbox`;
     await FileSystem.writeAsStringAsync(uri, payload);
     setBackupOpen(false);
@@ -139,9 +172,9 @@ export default function HomeScreen() {
     if (picked.canceled) return;
     try {
       const raw = await FileSystem.readAsStringAsync(picked.assets[0].uri);
-      const parsed = JSON.parse(raw);
-      if (!parsed.encrypted || !Array.isArray(parsed.cards)) throw new Error('invalid');
-      setCards(parsed.cards);
+      const parsed = JSON.parse(decryptBackup(raw, password));
+      if (!Array.isArray(parsed.cards)) throw new Error('invalid');
+      setCards(await restoreBackupCards(parsed.cards));
       setSelected(0);
       setBackupOpen(false);
       setPassword('');
