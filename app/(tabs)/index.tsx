@@ -82,6 +82,10 @@ export default function HomeScreen() {
   const [backupAsset, setBackupAsset] = useState<BackupAsset | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [working, setWorking] = useState(false);
+  const [notice, setNotice] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const workingRef = useRef(false);
   const confirmationRef = useRef<Confirmation | null>(null);
   confirmationRef.current = confirmation;
@@ -101,6 +105,7 @@ export default function HomeScreen() {
   );
 
   const closeTransientState = useCallback(() => {
+    setNotice(null);
     setRevealed(null);
     setDraft(null);
     setPendingImage(null);
@@ -147,14 +152,20 @@ export default function HomeScreen() {
     if (workingRef.current) return;
     workingRef.current = true;
     setWorking(true);
+    setNotice(null);
     try {
       await action();
     } catch (error) {
-      Alert.alert("操作未完成", errorMessage(error));
+      notify("操作未完成", errorMessage(error));
     } finally {
       workingRef.current = false;
       setWorking(false);
     }
+  }
+
+  function notify(title: string, description: string) {
+    if (Platform.OS === "web") setNotice({ title, description });
+    else Alert.alert(title, description);
   }
 
   function ensureAccessible() {
@@ -361,6 +372,7 @@ export default function HomeScreen() {
   }
 
   function openPage(page: Screen) {
+    setNotice(null);
     setMenuOpen(false);
     setPassword("");
     setPasswordVisible(false);
@@ -423,7 +435,7 @@ export default function HomeScreen() {
     }
     setPassword("");
     setPasswordVisible(false);
-    Alert.alert("备份已生成", "请妥善保管备份文件和密码。");
+    notify("备份已生成", "请妥善保管备份文件和密码。");
   }
 
   async function chooseBackup() {
@@ -462,7 +474,7 @@ export default function HomeScreen() {
     if (!accessRef.current.isAccessible()) return;
     setSelectedId(restored.cards[0]?.id ?? null);
     closeTransientState();
-    Alert.alert("恢复完成", `已恢复 ${restored.cards.length} 张卡片。`);
+    notify("恢复完成", `已恢复 ${restored.cards.length} 张卡片。`);
   }
 
   const titles: Record<Screen, string> = {
@@ -611,6 +623,26 @@ export default function HomeScreen() {
           </Pressable>
         )}
       </View>
+
+      {notice && (
+        <View
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={[styles.surface, { marginHorizontal: 22, marginBottom: 8 }]}
+        >
+          <View style={styles.spaced}>
+            <Text style={styles.gridName}>{notice.title}</Text>
+            <Pressable
+              accessibilityLabel="关闭提示"
+              style={styles.iconButton}
+              onPress={() => setNotice(null)}
+            >
+              {icon("close", 18)}
+            </Pressable>
+          </View>
+          <Text style={styles.text}>{notice.description}</Text>
+        </View>
+      )}
 
       {screen === "home" &&
         (current ? (

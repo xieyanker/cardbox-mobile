@@ -34,7 +34,10 @@ export function CardEditor({ card, onChange, onPickImage, busy }: EditorProps) {
       >
         <CardFace card={card} />
         <Pressable
-          style={[styles.outline, { flex: 0 }]}
+          style={[
+            styles.outline,
+            { flex: 0, minHeight: 48, justifyContent: "center" },
+          ]}
           disabled={busy}
           onPress={onPickImage}
           accessibilityRole="button"

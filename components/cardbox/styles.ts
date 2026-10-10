@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import { useColors } from "../../hooks/use-colors";
 
 export function useCardboxStyles() {
@@ -7,7 +7,13 @@ export function useCardboxStyles() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        page: { flex: 1, backgroundColor: colors.background },
+        page: {
+          flex: 1,
+          backgroundColor: colors.background,
+          ...(Platform.OS === "web"
+            ? { width: "100%", maxWidth: 480, alignSelf: "center" as const }
+            : {}),
+        },
         content: {
           paddingHorizontal: 22,
           paddingBottom: 110,
