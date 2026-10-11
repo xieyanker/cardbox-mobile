@@ -11,6 +11,7 @@ import {
   Alert,
   BackHandler,
   Image,
+  Linking,
   PanResponder,
   Platform,
   Pressable,
@@ -31,8 +32,10 @@ import {
   persistCardImage,
   readBackupFile,
   restoreBackupCards,
+  saveAndroidBackup,
 } from "@/lib/cardbox-files";
 import { decryptBackup, encryptBackup } from "@/lib/cardbox-security";
+import { APP_AUTHOR, APP_REPOSITORY_URL, APP_VERSION } from "@/shared/app-info";
 import {
   CARD_TONES,
   CARD_TYPES,
@@ -77,6 +80,8 @@ export default function HomeScreen() {
   const [draft, setDraft] = useState<Card | null>(null);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [backupMenuOpen, setBackupMenuOpen] = useState(false);
+  const [backupProgress, setBackupProgress] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [backupAsset, setBackupAsset] = useState<BackupAsset | null>(null);
@@ -113,6 +118,7 @@ export default function HomeScreen() {
     setPasswordVisible(false);
     setBackupAsset(null);
     setMenuOpen(false);
+    setBackupMenuOpen(false);
     confirmationRef.current?.resolve(false);
     setConfirmation(null);
     setScreen("home");
@@ -135,6 +141,10 @@ export default function HomeScreen() {
           return true;
         }
         if (menuOpen) {
+          if (backupMenuOpen) {
+            setBackupMenuOpen(false);
+            return true;
+          }
           setMenuOpen(false);
           return true;
         }
@@ -146,7 +156,7 @@ export default function HomeScreen() {
       },
     );
     return () => subscription.remove();
-  }, [screen, menuOpen, pendingImage, closeTransientState]);
+  }, [screen, menuOpen, backupMenuOpen, pendingImage, closeTransientState]);
 
   async function run(action: () => Promise<void>) {
     if (workingRef.current) return;
@@ -160,6 +170,7 @@ export default function HomeScreen() {
     } finally {
       workingRef.current = false;
       setWorking(false);
+      setBackupProgress("");
     }
   }
 
@@ -179,6 +190,8 @@ export default function HomeScreen() {
   }
 
   async function resumeAfterPicker() {
+    if (!(await accessRef.current.waitForForeground()))
+      throw new Error("应用尚未恢复到前台，请解锁后重试。");
     // An external system picker can outlast the automatic lock timeout.
     if (
       accessRef.current.snapshot().locked &&
@@ -374,6 +387,7 @@ export default function HomeScreen() {
   function openPage(page: Screen) {
     setNotice(null);
     setMenuOpen(false);
+    setBackupMenuOpen(false);
     setPassword("");
     setPasswordVisible(false);
     setBackupAsset(null);
@@ -384,9 +398,11 @@ export default function HomeScreen() {
   async function exportBackup() {
     if (!password.trim()) throw new Error("请输入备份密码。");
     if (!(await authenticate("验证身份后导出全部卡片"))) return;
+    setBackupProgress("正在读取卡片和图片…");
     const backup = await buildBackupCards(await storage.read());
     // Give the progress indicator a frame before password derivation starts.
     await new Promise((resolve) => setTimeout(resolve, 0));
+    setBackupProgress("正在加密备份，请稍候…");
     const payload = await encryptBackup(
       JSON.stringify({ version: 3, cards: backup }),
       password,
@@ -407,15 +423,20 @@ export default function HomeScreen() {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } else if (Platform.OS === "android") {
+      setBackupProgress("请选择保存文件夹…");
       const permission =
         await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-      if (!permission.granted || !(await resumeAfterPicker())) return;
-      const uri = await FileSystem.StorageAccessFramework.createFileAsync(
-        permission.directoryUri,
-        name,
-        "application/octet-stream",
-      );
-      await FileSystem.StorageAccessFramework.writeAsStringAsync(uri, payload);
+      if (!(await resumeAfterPicker())) {
+        notify("导出已取消", "身份验证未完成，备份文件未保存。");
+        return;
+      }
+      setScreen("export");
+      if (!permission.granted) {
+        notify("导出已取消", "没有选择保存文件夹，备份文件未保存。");
+        return;
+      }
+      setBackupProgress("正在写入并校验备份文件…");
+      await saveAndroidBackup(permission.directoryUri, name, payload);
     } else {
       if (!FileSystem.cacheDirectory) throw new Error("缓存目录不可用。");
       const uri = `${FileSystem.cacheDirectory}${name}`;
@@ -435,7 +456,7 @@ export default function HomeScreen() {
     }
     setPassword("");
     setPasswordVisible(false);
-    notify("备份已生成", "请妥善保管备份文件和密码。");
+    notify("备份已生成", `文件：${name}\n请妥善保管备份文件和密码。`);
   }
 
   async function chooseBackup() {
@@ -454,7 +475,9 @@ export default function HomeScreen() {
     if (!(await authenticate("验证身份后恢复卡片备份"))) return;
     const raw = await readBackupFile(backupAsset);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const input: unknown = JSON.parse(decryptBackup(raw, password));
+    setBackupProgress("正在解密备份，请稍候…");
+    const input: unknown = JSON.parse(await decryptBackup(raw, password));
+    ensureAccessible();
     const restored = await restoreBackupCards(input);
     try {
       const description = storage.ready
@@ -574,7 +597,9 @@ export default function HomeScreen() {
               {icon("chevron-back")}
             </Pressable>
           )}
-          <Text style={styles.title}>{titles[screen]}</Text>
+          <Text style={styles.title} numberOfLines={1}>
+            {titles[screen]}
+          </Text>
         </View>
         {working && (
           <ActivityIndicator
@@ -881,7 +906,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.primaryText}>
               {working
-                ? "正在处理…"
+                ? backupProgress || "正在处理…"
                 : screen === "export"
                   ? Platform.OS === "android"
                     ? "选择保存位置"
@@ -927,10 +952,27 @@ export default function HomeScreen() {
         <View style={styles.empty}>
           {icon("wallet-outline", 56)}
           <Text style={styles.heading}>CardBox</Text>
+          <Text style={styles.text}>版本 {APP_VERSION}</Text>
+          <Text style={styles.text}>作者：{APP_AUTHOR}</Text>
           <Text style={styles.muted}>简单 · 安全 · 纯本地</Text>
           <Text style={[styles.muted, styles.centerText]}>
             卡片资料保存在本机，无需账号。{"\n"}请定期导出加密备份。
           </Text>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="打开 GitHub 项目"
+            style={styles.iconButton}
+            onPress={() =>
+              void run(async () => {
+                await Linking.openURL(APP_REPOSITORY_URL);
+              })
+            }
+          >
+            <Text style={styles.outlineText}>GitHub 项目</Text>
+            <Text selectable style={[styles.muted, styles.centerText]}>
+              {APP_REPOSITORY_URL}
+            </Text>
+          </Pressable>
         </View>
       )}
 
@@ -949,26 +991,45 @@ export default function HomeScreen() {
         <View style={styles.backdrop}>
           <Pressable
             style={{ flex: 1 }}
-            onPress={() => setMenuOpen(false)}
+            onPress={() => {
+              setMenuOpen(false);
+              setBackupMenuOpen(false);
+            }}
             accessibilityLabel="关闭菜单"
           />
           <View style={styles.menu}>
-            {(
-              [
-                ["sort", "swap-vertical-outline", "卡片排序"],
-                ["export", "cloud-upload-outline", "导出备份"],
-                ["import", "cloud-download-outline", "导入备份"],
-                ["settings", "lock-closed-outline", "自动锁定"],
-                ["about", "information-circle-outline", "关于"],
-              ] as const
+            {backupMenuOpen && (
+              <Pressable
+                style={[styles.menuItem, styles.submenuHeading]}
+                onPress={() => setBackupMenuOpen(false)}
+                accessibilityLabel="返回一级菜单"
+              >
+                {icon("chevron-back", 18)}
+                <Text style={styles.text}>备份管理</Text>
+              </Pressable>
+            )}
+            {(backupMenuOpen
+              ? ([
+                  ["export", "cloud-upload-outline", "导出备份"],
+                  ["import", "cloud-download-outline", "导入备份"],
+                ] as const)
+              : ([
+                  ["sort", "swap-vertical-outline", "卡片排序"],
+                  ["backup", "folder-open-outline", "备份管理"],
+                  ["settings", "lock-closed-outline", "自动锁定"],
+                  ["about", "information-circle-outline", "关于"],
+                ] as const)
             ).map(([page, name, label]) => (
               <Pressable
                 key={page}
                 style={styles.menuItem}
-                onPress={() => openPage(page)}
+                onPress={() =>
+                  page === "backup" ? setBackupMenuOpen(true) : openPage(page)
+                }
               >
                 {icon(name, 18)}
-                <Text style={styles.text}>{label}</Text>
+                <Text style={[styles.text, styles.grow]}>{label}</Text>
+                {page === "backup" && icon("chevron-forward", 16)}
               </Pressable>
             ))}
           </View>

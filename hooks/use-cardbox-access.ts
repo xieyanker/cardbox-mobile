@@ -90,6 +90,7 @@ export function useCardboxAccess() {
     authenticate: controller.authenticate,
     unlock: controller.unlock,
     snapshot: controller.snapshot,
+    waitForForeground: controller.waitForForeground,
     isAccessible: () => {
       const current = controller.snapshot();
       return !current.locked && !current.obscured;

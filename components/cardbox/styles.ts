@@ -32,8 +32,16 @@ export function useCardboxStyles() {
           alignItems: "center",
           gap: 10,
           flex: 1,
+          minWidth: 0,
         },
-        title: { fontSize: 21, fontWeight: "700", color: colors.text },
+        title: {
+          fontSize: 21,
+          fontWeight: "700",
+          color: colors.text,
+          flexShrink: 1,
+          paddingRight: 6,
+          lineHeight: 29,
+        },
         heading: { fontSize: 24, fontWeight: "700", color: colors.text },
         text: { color: colors.text, fontSize: 15 },
         muted: { color: colors.muted, fontSize: 13, lineHeight: 21 },
@@ -227,6 +235,10 @@ export function useCardboxStyles() {
           alignItems: "center",
           padding: 13,
           gap: 12,
+        },
+        submenuHeading: {
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
         },
         sheetBackdrop: {
           ...StyleSheet.absoluteFillObject,

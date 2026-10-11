@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { getRandomBytesAsync } from "expo-crypto";
 import CryptoJS from "crypto-js";
+import { derivePasswordBytes } from "./cardbox-pbkdf2";
 import { Platform } from "react-native";
 import { z } from "zod";
 import { MAX_BACKUP_BYTES } from "../shared/cardbox";
@@ -133,12 +134,26 @@ export async function decryptLocal(value: string) {
   );
 }
 
-function backupKeys(password: string, salt: string) {
-  const words = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(salt), {
-    keySize: 512 / 32,
-    iterations: ITERATIONS,
-    hasher: CryptoJS.algo.SHA256,
-  });
+function wordBytes(value: CryptoJS.lib.WordArray) {
+  return Uint8Array.from(
+    { length: value.sigBytes },
+    (_, index) => (value.words[index >>> 2] >>> (24 - (index % 4) * 8)) & 255,
+  );
+}
+
+async function deriveBackupKey(password: string, salt: string, length: number) {
+  // Keep the original parameters and UTF-8 encoding, while yielding to the UI.
+  const bytes = await derivePasswordBytes(
+    wordBytes(CryptoJS.enc.Utf8.parse(password)),
+    wordBytes(CryptoJS.enc.Hex.parse(salt)),
+    ITERATIONS,
+    length,
+  );
+  return CryptoJS.lib.WordArray.create(bytes);
+}
+
+async function backupKeys(password: string, salt: string) {
+  const words = await deriveBackupKey(password, salt, 64);
   return {
     encryption: CryptoJS.lib.WordArray.create(words.words.slice(0, 8), 32),
     authentication: CryptoJS.lib.WordArray.create(words.words.slice(8, 16), 32),
@@ -149,7 +164,7 @@ export async function encryptBackup(value: string, password: string) {
   if (!password.trim()) throw new Error("请输入备份密码。");
   const salt = (await randomWords(16)).toString();
   const iv = await randomWords(16);
-  const keys = backupKeys(password, salt);
+  const keys = await backupKeys(password, salt);
   const envelope = {
     format: "cardbox-secure-v3" as const,
     salt,
@@ -163,22 +178,14 @@ export async function encryptBackup(value: string, password: string) {
   return JSON.stringify({ ...envelope, mac });
 }
 
-export function decryptBackup(value: string, password: string) {
+export async function decryptBackup(value: string, password: string) {
   if (value.length > MAX_BACKUP_BYTES) throw new Error("备份文件过大。");
   const envelope = backupEnvelopeSchema.parse(JSON.parse(value));
   if (envelope.format === "cardbox-secure-v2") {
-    const key = CryptoJS.PBKDF2(
-      password,
-      CryptoJS.enc.Hex.parse(envelope.salt),
-      {
-        keySize: 256 / 32,
-        iterations: ITERATIONS,
-        hasher: CryptoJS.algo.SHA256,
-      },
-    );
+    const key = await deriveBackupKey(password, envelope.salt, 32);
     return decryptCipher(envelope.payload, key, envelope.iv);
   }
-  const keys = backupKeys(password, envelope.salt);
+  const keys = await backupKeys(password, envelope.salt);
   const mac = CryptoJS.HmacSHA256(
     `${envelope.format}|${envelope.salt}|${envelope.iv}|${envelope.payload}`,
     keys.authentication,

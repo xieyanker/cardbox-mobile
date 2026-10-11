@@ -1,4 +1,5 @@
 import CryptoJS from "crypto-js";
+import { createDecipheriv, createHmac, pbkdf2Sync } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   decryptBackup,
@@ -76,18 +77,44 @@ describe("password backup compatibility and integrity", () => {
       '{"version":3,"cards":[]}',
       "correct password",
     );
-    expect(decryptBackup(value, "correct password")).toBe(
+    expect(await decryptBackup(value, "correct password")).toBe(
       '{"version":3,"cards":[]}',
     );
-    expect(() => decryptBackup(value, "wrong password")).toThrow();
+    const exported = JSON.parse(value);
+    const originalKeys = pbkdf2Sync(
+      "correct password",
+      Buffer.from(exported.salt, "hex"),
+      120_000,
+      64,
+      "sha256",
+    );
+    const originalCipher = createDecipheriv(
+      "aes-256-cbc",
+      originalKeys.subarray(0, 32),
+      Buffer.from(exported.iv, "hex"),
+    );
+    expect(
+      Buffer.concat([
+        originalCipher.update(Buffer.from(exported.payload, "base64")),
+        originalCipher.final(),
+      ]).toString("utf8"),
+    ).toBe('{"version":3,"cards":[]}');
+    expect(
+      createHmac("sha256", originalKeys.subarray(32))
+        .update(
+          `${exported.format}|${exported.salt}|${exported.iv}|${exported.payload}`,
+        )
+        .digest("hex"),
+    ).toBe(exported.mac);
+    await expect(decryptBackup(value, "wrong password")).rejects.toThrow();
     const envelope = JSON.parse(value);
     envelope.salt = "0".repeat(32);
-    expect(() =>
+    await expect(
       decryptBackup(JSON.stringify(envelope), "correct password"),
-    ).toThrow();
+    ).rejects.toThrow();
   }, 30_000);
 
-  it("restores backups produced by the original v2 algorithm", () => {
+  it("restores backups produced by the original v2 algorithm", async () => {
     const salt = CryptoJS.enc.Hex.parse("0123456789abcdef0123456789abcdef");
     const iv = CryptoJS.enc.Hex.parse("fedcba9876543210fedcba9876543210");
     const key = CryptoJS.PBKDF2("legacy password", salt, {
@@ -98,7 +125,7 @@ describe("password backup compatibility and integrity", () => {
       iv,
     }).toString();
     expect(
-      decryptBackup(
+      await decryptBackup(
         JSON.stringify({
           format: "cardbox-secure-v2",
           salt: salt.toString(),

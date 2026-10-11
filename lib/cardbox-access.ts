@@ -41,12 +41,12 @@ export function createAccessController({
   }
 
   function waitForForeground() {
-    if (appState === "active") return Promise.resolve();
-    return new Promise<void>((resolve) => {
+    if (appState === "active") return Promise.resolve(true);
+    return new Promise<boolean>((resolve) => {
       const finish = () => {
         clearTimeout(timer);
         listeners.delete(onChange);
-        resolve();
+        resolve(appState === "active");
       };
       const onChange = () => {
         if (appState === "active") finish();
@@ -107,6 +107,7 @@ export function createAccessController({
       timeout = next;
     },
     onAppState,
+    waitForForeground,
     authenticate,
     unlock: async () => {
       if (await authenticate("解锁 CardBox")) {

@@ -2,6 +2,42 @@ import { describe, expect, it, vi } from "vitest";
 import { createAccessController } from "../lib/cardbox-access";
 
 describe("device access", () => {
+  it("waits for a system picker result to be followed by the foreground event", async () => {
+    const access = createAccessController({
+      native: true,
+      verify: async () => true,
+    });
+    await access.unlock();
+    access.onAppState("background");
+    const foreground = access.waitForForeground();
+    expect(access.snapshot().obscured).toBe(true);
+    access.onAppState("active");
+    expect(await foreground).toBe(true);
+    expect(access.snapshot().obscured).toBe(false);
+  });
+
+  it("does not resume in the background or bypass a lock after a long picker session", async () => {
+    vi.useFakeTimers();
+    try {
+      let now = 0;
+      const access = createAccessController({
+        native: true,
+        now: () => now,
+        verify: async () => true,
+      });
+      await access.unlock();
+      access.onAppState("background");
+      const waiting = access.waitForForeground();
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(await waiting).toBe(false);
+      now = 61_000;
+      access.onAppState("active");
+      expect(await access.waitForForeground()).toBe(true);
+      expect(access.snapshot().locked).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("allows Android PIN fallback to return from a system Activity while keeping content covered", async () => {
     let finish!: (success: boolean) => void;
     const access = createAccessController({

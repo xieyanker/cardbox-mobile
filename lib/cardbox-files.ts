@@ -150,3 +150,37 @@ export async function readBackupFile(asset: {
     throw new Error("备份文件无效或超过 50 MB。");
   return FileSystem.readAsStringAsync(asset.uri);
 }
+
+/** Only report a saved backup after the selected provider returns identical data. */
+export async function saveAndroidBackup(
+  directoryUri: string,
+  name: string,
+  payload: string,
+) {
+  let uri: string | undefined;
+  try {
+    uri = await FileSystem.StorageAccessFramework.createFileAsync(
+      directoryUri,
+      name,
+      "application/octet-stream",
+    );
+    await FileSystem.StorageAccessFramework.writeAsStringAsync(uri, payload, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    const saved = await FileSystem.StorageAccessFramework.readAsStringAsync(
+      uri,
+      {
+        encoding: FileSystem.EncodingType.UTF8,
+      },
+    );
+    if (saved !== payload) throw new Error("文件内容校验失败。");
+    return uri;
+  } catch (error) {
+    if (uri)
+      await FileSystem.StorageAccessFramework.deleteAsync(uri, {
+        idempotent: true,
+      }).catch(() => undefined);
+    const reason = error instanceof Error ? error.message : "文件保存失败。";
+    throw new Error(`备份未保存，请重新选择可写入的文件夹。${reason}`);
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "app-template",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+    "@noble/hashes": "1.8.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.8.12",
     "@react-navigation/elements": "^2.9.2",

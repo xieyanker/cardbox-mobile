@@ -34,6 +34,8 @@ async function home() {
 }
 async function menu(name) {
   await label("更多菜单").click();
+  if (name === "导出备份" || name === "导入备份")
+    await text("备份管理").click();
   await text(name).click();
 }
 async function add({ name, number, type, image = false }) {
@@ -74,7 +76,10 @@ async function add({ name, number, type, image = false }) {
   );
   await fixture.screenshot({ path: ".expo/cardbox-fixture.png" });
   await fixture.close();
-  await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
+  await page.goto(process.env.CARDBOX_TEST_URL || "http://localhost:8081/", {
+    waitUntil: "networkidle",
+    timeout: 90000,
+  });
   await step("first launch is empty without writing demo cards", async () => {
     await visible("还没有卡片");
     assert.equal(
@@ -83,6 +88,44 @@ async function add({ name, number, type, image = false }) {
     );
     await shot("empty-light");
   });
+  await step(
+    "backup submenu and About expose version, author and repository",
+    async () => {
+      await label("更多菜单").click();
+      assert.equal(await text("导出备份").count(), 0);
+      assert.equal(await text("导入备份").count(), 0);
+      await text("备份管理").click();
+      await visible("导出备份");
+      await visible("导入备份");
+      await label("返回一级菜单").click();
+      await text("关于").click();
+      await visible("版本 2.0.0");
+      await visible("作者：xieyanker");
+      await visible("https://github.com/xieyanker/cardbox-mobile");
+      await label("打开 GitHub 项目").waitFor({ state: "visible" });
+      await shot("about-light");
+      await home();
+    },
+  );
+  await step(
+    "home title fits alongside actions at a narrow viewport",
+    async () => {
+      await page.setViewportSize({ width: 320, height: 740 });
+      const title = text("CardBox").first();
+      const titleBounds = await title.boundingBox();
+      const gridBounds = await label("全部卡片").boundingBox();
+      assert(
+        titleBounds.x >= 0 && titleBounds.x + titleBounds.width <= gridBounds.x,
+      );
+      assert(
+        await title.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+      );
+      await shot("header-narrow");
+      await page.setViewportSize({ width: 390, height: 844 });
+    },
+  );
   await step(
     "invalid form fields show actionable errors without saving",
     async () => {
@@ -279,7 +322,7 @@ async function add({ name, number, type, image = false }) {
       );
       await text("开始导入").click();
       await page.waitForFunction(
-        () => !document.body.innerText.includes("正在处理…"),
+        () => !document.querySelector('[aria-label="备份密码"]').disabled,
         null,
         { timeout: 60000 },
       );
@@ -337,6 +380,7 @@ async function add({ name, number, type, image = false }) {
       await shot("card-dark");
       await label("更多菜单").click();
       await shot("menu-dark");
+      await text("备份管理").click();
       await text("导入备份").click();
       await shot("backup-dark");
       await home();
