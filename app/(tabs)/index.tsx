@@ -42,6 +42,7 @@ import {
 } from "@/lib/cardbox-files";
 import { decryptBackup, encryptBackup } from "@/lib/cardbox-security";
 import { APP_AUTHOR, APP_REPOSITORY_URL, APP_VERSION } from "@/shared/app-info";
+import { BROWSE_MODES, DEFAULT_BROWSE_ORDER } from "@/shared/cardbox-browse";
 import {
   CARD_TONES,
   CARD_TYPES,
@@ -62,6 +63,7 @@ type Screen =
   | "export"
   | "import"
   | "settings"
+  | "browse-settings"
   | "about";
 type Confirmation = {
   title: string;
@@ -531,6 +533,7 @@ export default function HomeScreen() {
     export: "导出备份",
     import: "导入备份",
     settings: "自动锁定",
+    "browse-settings": "显示模式设置",
     about: "关于 CardBox",
   };
   const icon = (
@@ -768,6 +771,7 @@ export default function HomeScreen() {
       {screen === "home" && current && (
         <BrowseModePicker
           mode={browse.mode}
+          order={browse.order}
           disabled={busy}
           onChange={(mode) => {
             setRevealed(null);
@@ -993,6 +997,57 @@ export default function HomeScreen() {
         </ScrollView>
       )}
 
+      {screen === "browse-settings" && (
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.muted}>
+            调整首页显示模式的顺序，修改后自动保存。
+          </Text>
+          {browse.order.map((mode, index) => (
+            <View key={mode} style={styles.surface}>
+              <View style={styles.spaced}>
+                <Text style={[styles.text, styles.grow]}>
+                  {index + 1}. {BROWSE_MODES[mode]}
+                </Text>
+                {([-1, 1] as const).map((direction) => {
+                  const disabled =
+                    busy ||
+                    index + direction < 0 ||
+                    index + direction >= browse.order.length;
+                  return (
+                    <Pressable
+                      key={direction}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled }}
+                      accessibilityLabel={`${direction < 0 ? "上移" : "下移"}${BROWSE_MODES[mode]}模式`}
+                      disabled={disabled}
+                      style={[styles.iconButton, disabled && styles.disabled]}
+                      onPress={() => {
+                        const next = [...browse.order];
+                        [next[index], next[index + direction]] = [
+                          next[index + direction],
+                          next[index],
+                        ];
+                        browse.saveOrder(next);
+                      }}
+                    >
+                      {icon(direction < 0 ? "arrow-up" : "arrow-down", 20)}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <Pressable
+            accessibilityLabel="恢复默认模式顺序"
+            disabled={busy}
+            style={styles.outline}
+            onPress={() => browse.saveOrder([...DEFAULT_BROWSE_ORDER])}
+          >
+            <Text style={styles.outlineText}>恢复默认顺序</Text>
+          </Pressable>
+        </ScrollView>
+      )}
+
       {screen === "settings" && (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.muted}>
@@ -1093,6 +1148,7 @@ export default function HomeScreen() {
                   ["sort", "swap-vertical-outline", "卡片排序"],
                   ["backup", "folder-open-outline", "备份管理"],
                   ["settings", "lock-closed-outline", "自动锁定"],
+                  ["browse-settings", "options-outline", "显示模式设置"],
                   ["about", "information-circle-outline", "关于"],
                 ] as const)
             ).map(([page, name, label]) => (

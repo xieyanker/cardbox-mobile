@@ -27,10 +27,12 @@ import { useCardboxStyles } from "./styles";
 
 export function BrowseModePicker({
   mode,
+  order,
   disabled,
   onChange,
 }: {
   mode: BrowseMode;
+  order: readonly BrowseMode[];
   disabled: boolean;
   onChange: (mode: BrowseMode) => void;
 }) {
@@ -42,7 +44,7 @@ export function BrowseModePicker({
         { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
-      {(Object.keys(BROWSE_MODES) as BrowseMode[]).map((value) => (
+      {order.map((value) => (
         <Pressable
           key={value}
           accessibilityRole="radio"

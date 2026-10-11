@@ -29,6 +29,51 @@ const artifacts = path.resolve(
       await label("保存卡片").click();
       await text(`${index} / ${index}`).waitFor();
     }
+    const modeOrder = () =>
+      page
+        .getByRole("radio")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute("aria-label")),
+        );
+    assert.deepEqual(await modeOrder(), [
+      "经典模式",
+      "钱包模式",
+      "堆叠模式",
+      "聚焦模式",
+    ]);
+    await label("更多菜单").click();
+    await label("显示模式设置").click();
+    assert(await label("上移经典模式").isDisabled());
+    assert(await label("下移聚焦模式").isDisabled());
+    await label("下移经典模式").click();
+    await label("下移经典模式").click();
+    await label("返回首页").click();
+    assert.deepEqual(await modeOrder(), [
+      "钱包模式",
+      "堆叠模式",
+      "经典模式",
+      "聚焦模式",
+    ]);
+    await page.reload({ waitUntil: "networkidle" });
+    await label("经典模式").waitFor();
+    assert.deepEqual(await modeOrder(), [
+      "钱包模式",
+      "堆叠模式",
+      "经典模式",
+      "聚焦模式",
+    ]);
+    await label("更多菜单").click();
+    await label("显示模式设置").click();
+    await label("恢复默认模式顺序").click();
+    await label("返回首页").click();
+    assert.deepEqual(await modeOrder(), [
+      "经典模式",
+      "钱包模式",
+      "堆叠模式",
+      "聚焦模式",
+    ]);
+    console.log("PASS mode order settings, boundaries, persistence and reset");
+    for (let index = 0; index < 4; index++) await label("下一张卡片").click();
     await label("上一张卡片").click();
     await label("上一张卡片").click();
     for (const [mode, name] of [
