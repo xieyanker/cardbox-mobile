@@ -56,7 +56,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 4,
+    versionCode: 5,
     adaptiveIcon: {
       backgroundColor: "#F2F6F5",
       foregroundImage: "./assets/images/android-icon-foreground.png",

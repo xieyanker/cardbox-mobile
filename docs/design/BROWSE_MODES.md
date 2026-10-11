@@ -20,3 +20,11 @@ pnpm test:browse
 ```
 
 隔离 Chrome 验证三种模式的双向滑动、卡面点击、详情隐私、模式记忆、保留平铺 / 经典模式、首末边界、小屏以及浅 / 深色。截图与报告保存到 `.expo/cardbox-browse-artifacts/`。Web 检查不代替 Android 真机的触摸及帧率体验验收。
+
+## Web 开发预览
+
+以下使用虚构测试卡片，记录三种布局：
+
+| 堆叠 | 聚焦 | 钱包 |
+| --- | --- | --- |
+| ![堆叠模式](images/cardbox-3.0-stack.png) | ![聚焦模式](images/cardbox-3.0-focus.png) | ![钱包模式](images/cardbox-3.0-wallet.png) |

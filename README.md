@@ -1,17 +1,22 @@
 # CardBox
 
-CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前版本为 `2.0.0`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
+CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前代码版本为 `3.0.0`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
 
 ## 项目文档
 
 - [设计说明与原型图](docs/design/README.md)：用户提供的原始设计图、页面说明、当前实现与原型的差异。
 - [开发与交接指南](docs/DEVELOPMENT.md)：开发环境、运行命令、Git 状态、验证结果和后续开发顺序。
 - [Android 验收步骤](docs/TESTING.md)：Expo Go 连接方式、关键功能和真机验证记录。
-- [CardBox 3.0 需求记录](docs/CARDBOX_3.0_REQUIREMENTS.md)：待开发的六项需求与分批建议，等待用户后续指示开始。
+- [CardBox 3.0 需求与进度](docs/CARDBOX_3.0_REQUIREMENTS.md)：六项功能实现、阶段提交、自动验证与待真机验收事项。
+- [版本变更记录](CHANGELOG.md)：每个版本的功能与验证状态。
 
 ## 当前实现
 
 客户端包含卡片添加、修改、删除、查看、卡号隐藏、生物识别验证、卡面选择与裁剪、排序、密码备份和后台自动锁定。核心卡片数据通过 AsyncStorage 保存在本机，设备密钥通过 SecureStore 保存；卡片业务目前没有接入后端同步。
+
+3.0.0 重新设计包含 CardBox 字样的应用图标，将首页添加入口移到右上角菜单第一项，简化备份管理菜单。首页增加堆叠、聚焦与钱包浏览，保留经典左右滑动及平铺浏览，并记住模式选择。备份优化复用密码派生状态、提前验证密码，并限制图片 I/O 并发；新 v4 备份保留 120,000 轮派生，可读取旧 v2 / v3。桌面 JS 对照加解密约快 4–6 倍，数据与边界见[性能记录](docs/performance/BACKUP_3.0.md)。
+
+3.0.0 已通过类型检查、54 条业务测试、21 项 Web 操作回归、三模式浏览检查、Android 开发包及 Hermes 字节码生成；ESLint 无错误（7 条已有模板警告）。Android 真机动画、备份耗时与 APK 图标验收待完成，目前没有生成 3.0 APK。
 
 首轮开发已修复存储初始化、串行写入、设备密钥初始化、身份验证入口、图片持久保存和排序问题，并对照原型调整主界面。2.0.0 已通过类型检查、45 条业务测试、21 项 Web 操作回归检查和 Android 开发代码打包；2026-10-11 用户确认全部验收完成，接受本版本作为当前开发基线。
 
@@ -23,6 +28,7 @@ CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目
 | `app/_layout.tsx`                                          | 应用入口、导航、主题和 Provider       |
 | `lib/cardbox-security.ts`                                  | 本地数据与备份加解密                  |
 | `lib/cardbox-pbkdf2.ts`                                    | 保持界面响应的备份密码派生            |
+| `components/cardbox/card-browser.tsx` / `hooks/use-cardbox-browse.ts` | 三种动画浏览模式与本机模式偏好 |
 | `shared/app-info.ts`                                       | 关于页作者、仓库地址与版本信息        |
 | `lib/cardbox-repository.ts` / `hooks/use-cardbox-cards.ts` | 卡片加载、串行写入及错误恢复          |
 | `lib/cardbox-access.ts` / `hooks/use-cardbox-access.ts`    | 身份验证、后台遮挡及自动锁定          |
