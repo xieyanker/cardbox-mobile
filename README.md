@@ -107,4 +107,4 @@ pnpm dev:mobile
 | [CardBox 3.0 需求与进度](docs/CARDBOX_3.0_REQUIREMENTS.md) | 功能实现、阶段提交与验收进度。 |
 | [版本变更记录](CHANGELOG.md) | 各版本变化与检查记录。 |
 
-后续开发直接在 `main` 上进行。应用版本统一由 `package.json` 管理，Android 构建编号由 `app.config.ts` 管理；功能版本完成后创建对应 tag，文档与展示图片更新只提交到 `main`。
+后续开发直接在 `main` 上进行。应用版本统一由 `package.json` 管理，Android 构建编号由 `app.config.ts` 管理；用户亲自验证通过并明确授权后才创建封板 tag，文档与展示图片更新只提交到 `main`。4.0 当前开发与旧数据兼容要求见 [4.0 开发记录](docs/CARDBOX_4.0_REQUIREMENTS.md)。

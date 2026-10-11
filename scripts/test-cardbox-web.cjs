@@ -157,6 +157,50 @@ async function add({ name, number, type, image = false }) {
     await home();
   });
   await step(
+    "expiry mask types, deletes, pastes and edits within one input",
+    async () => {
+      await menu("添加卡片");
+      const expiry = label("到期时间");
+      assert.equal(await expiry.inputValue(), "__/__");
+      assert.equal(await expiry.getAttribute("inputmode"), "numeric");
+      await expiry.click();
+      await expiry.pressSequentially("0726", { delay: 80 });
+      assert.equal(await expiry.inputValue(), "07/26");
+      for (const expected of ["07/2_", "07/__", "0_/__", "__/__"]) {
+        await expiry.press("Backspace");
+        assert.equal(await expiry.inputValue(), expected);
+      }
+      await expiry.fill("0726");
+      assert.equal(await expiry.inputValue(), "07/26");
+      await expiry.fill("12/30");
+      assert.equal(await expiry.inputValue(), "12/30");
+      await expiry.press("Home");
+      await expiry.press("Shift+ArrowRight");
+      await expiry.press("Shift+ArrowRight");
+      await expiry.pressSequentially("07", { delay: 80 });
+      assert.equal(await expiry.inputValue(), "07/30");
+      await expiry.fill("07/22");
+      await expiry.press("Home");
+      for (let i = 0; i < 3; i++) await expiry.press("ArrowRight");
+      await expiry.pressSequentially("2");
+      assert.equal(await expiry.inputValue(), "07/22");
+      assert.equal(
+        await expiry.evaluate((element) => element.selectionStart),
+        4,
+      );
+      await expiry.press("Backspace");
+      assert.equal(await expiry.inputValue(), "07/2_");
+      assert.equal(
+        await expiry.evaluate((element) => element.selectionStart),
+        3,
+      );
+      await expiry.press("Control+a");
+      await expiry.press("Backspace");
+      assert.equal(await expiry.inputValue(), "__/__");
+      await home();
+    },
+  );
+  await step(
     "add credit card with an image and select the new card",
     async () => {
       await add({
@@ -202,6 +246,7 @@ async function add({ name, number, type, image = false }) {
     "edit name, type and notes while retaining the image",
     async () => {
       await text("修改").click();
+      assert.equal(await label("到期时间").inputValue(), "12/30");
       await label("卡片名称").fill("测试卡 A 已修改");
       await page.getByRole("radio", { name: "虚拟卡", exact: true }).click();
       await label("备注").fill("已修改的测试备注");
@@ -210,6 +255,7 @@ async function add({ name, number, type, image = false }) {
       await visible("测试卡 A 已修改");
       await visible("虚拟卡");
       await visible("已修改的测试备注");
+      await visible("12/30");
       await page
         .getByRole("img", { name: "测试卡 A 已修改卡面", exact: true })
         .waitFor();

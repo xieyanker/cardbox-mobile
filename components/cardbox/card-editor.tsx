@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { CARD_TYPES, type Card } from "../../shared/cardbox";
 import { CardFace } from "./card-face";
+import { ExpiryInput } from "./expiry-input";
 import { useCardboxStyles } from "./styles";
 
 type EditorProps = {
@@ -119,14 +120,9 @@ export function CardEditor({ card, onChange, onPickImage, busy }: EditorProps) {
         </View>
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>到期时间</Text>
-          <TextInput
-            accessibilityLabel="到期时间"
+          <ExpiryInput
             value={card.expiry}
-            onChangeText={(value) => set("expiry", value)}
-            maxLength={5}
-            placeholder="MM/YY，例如 12/30"
-            placeholderTextColor={colors.muted}
-            style={styles.input}
+            onChange={(value) => set("expiry", value)}
             editable={!busy}
           />
         </View>

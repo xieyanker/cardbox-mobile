@@ -33,6 +33,21 @@ function setup(raw: string | null) {
 }
 
 describe("card persistence", () => {
+  it("reads legacy expiry unchanged without writes and retains it when editing another field", async () => {
+    const legacy = { ...card, expiry: "07/26" };
+    const original = JSON.stringify([legacy]);
+    const { repository, storage, raw } = setup(original);
+    expect(await repository.load()).toEqual([legacy]);
+    expect(storage.setItem).not.toHaveBeenCalled();
+    expect(raw()).toBe(original);
+    await repository.update((cards) =>
+      cards.map((item) => ({ ...item, note: "新备注" })),
+    );
+    expect(await setup(raw()).repository.load()).toEqual([
+      { ...legacy, note: "新备注" },
+    ]);
+  });
+
   it("archives unreadable original data before explicit backup recovery", async () => {
     const entries = new Map([[CARD_STORAGE_KEY, "unreadable original"]]);
     const repository = createCardRepository({
