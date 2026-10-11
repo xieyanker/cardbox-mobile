@@ -1,6 +1,6 @@
 # CardBox
 
-CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前代码版本为 `3.0.1`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
+CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前代码版本为 `3.0.2`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
 
 ## 项目文档
 
@@ -13,6 +13,8 @@ CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目
 ## 当前实现
 
 客户端包含卡片添加、修改、删除、查看、卡号隐藏、生物识别验证、卡面选择与裁剪、排序、密码备份和后台自动锁定。核心卡片数据通过 AsyncStorage 保存在本机，设备密钥通过 SecureStore 保存；卡片业务目前没有接入后端同步。
+
+3.0.2 将菜单名称统一为四字：“浏览模式”用于调整首页模式顺序，“关于应用”展示版本和作者。
 
 3.0.0 重新设计包含 CardBox 字样的应用图标，将首页添加入口移到右上角菜单第一项，简化备份管理菜单。首页增加堆叠、聚焦与钱包浏览，保留经典左右滑动及平铺浏览，并记住模式选择。备份优化复用密码派生状态、提前验证密码，并限制图片 I/O 并发；新 v4 备份保留 120,000 轮派生，可读取旧 v2 / v3。桌面 JS 对照加解密约快 4–6 倍，数据与边界见[性能记录](docs/performance/BACKUP_3.0.md)。
 

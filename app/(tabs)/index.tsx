@@ -533,8 +533,8 @@ export default function HomeScreen() {
     export: "导出备份",
     import: "导入备份",
     settings: "自动锁定",
-    "browse-settings": "显示模式设置",
-    about: "关于 CardBox",
+    "browse-settings": "浏览模式",
+    about: "关于应用",
   };
   const icon = (
     name: React.ComponentProps<typeof Ionicons>["name"],
@@ -1148,8 +1148,8 @@ export default function HomeScreen() {
                   ["sort", "swap-vertical-outline", "卡片排序"],
                   ["backup", "folder-open-outline", "备份管理"],
                   ["settings", "lock-closed-outline", "自动锁定"],
-                  ["browse-settings", "options-outline", "显示模式设置"],
-                  ["about", "information-circle-outline", "关于"],
+                  ["browse-settings", "options-outline", "浏览模式"],
+                  ["about", "information-circle-outline", "关于应用"],
                 ] as const)
             ).map(([page, name, label]) => (
               <Pressable

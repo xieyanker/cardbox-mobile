@@ -42,7 +42,7 @@ const artifacts = path.resolve(
       "聚焦模式",
     ]);
     await label("更多菜单").click();
-    await label("显示模式设置").click();
+    await label("浏览模式").click();
     assert(await label("上移经典模式").isDisabled());
     assert(await label("下移聚焦模式").isDisabled());
     await label("下移经典模式").click();
@@ -63,7 +63,7 @@ const artifacts = path.resolve(
       "聚焦模式",
     ]);
     await label("更多菜单").click();
-    await label("显示模式设置").click();
+    await label("浏览模式").click();
     await label("恢复默认模式顺序").click();
     await label("返回首页").click();
     assert.deepEqual(await modeOrder(), [

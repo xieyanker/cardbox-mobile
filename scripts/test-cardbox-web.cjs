@@ -98,7 +98,7 @@ async function add({ name, number, type, image = false }) {
       await visible("导出备份");
       await visible("导入备份");
       await label("返回一级菜单").click();
-      await text("关于").click();
+      await text("关于应用").click();
       await visible(`版本 ${require("../package.json").version}`);
       await visible("作者：xieyanker");
       await visible("https://github.com/xieyanker/cardbox-mobile");

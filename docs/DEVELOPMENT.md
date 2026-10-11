@@ -1,6 +1,6 @@
 # CardBox 开发与交接指南
 
-更新日期：2026-10-11，当前应用版本为 `3.0.1`（Android `versionCode: 6`）。作者：xieyanker；仓库：[GitHub](https://github.com/xieyanker/cardbox-mobile)。2.0.0 是用户已验收基线；3.0.1 根据真机反馈调整模式排序并修复 Hermes 密码派生瓶颈，用户已复测并认可备份提速效果。
+更新日期：2026-10-11，当前应用版本为 `3.0.2`（Android `versionCode: 7`）。作者：xieyanker；仓库：[GitHub](https://github.com/xieyanker/cardbox-mobile)。3.0.2 将菜单统一为四字名称；3.0.1 的备份提速效果已得到用户真机确认。
 
 ## 现有资料与分析依据
 
