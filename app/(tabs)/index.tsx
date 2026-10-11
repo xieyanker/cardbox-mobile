@@ -22,11 +22,17 @@ import {
 } from "react-native";
 import { z } from "zod";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CardFace, maskCardNumber } from "@/components/cardbox/card-face";
+import { CardFace } from "@/components/cardbox/card-face";
+import {
+  BrowseModePicker,
+  CardBrowser,
+} from "@/components/cardbox/card-browser";
+import { CardDetails } from "@/components/cardbox/card-details";
 import { CardEditor } from "@/components/cardbox/card-editor";
 import { useCardboxStyles } from "@/components/cardbox/styles";
 import { useCardboxAccess } from "@/hooks/use-cardbox-access";
 import { useCardboxCards } from "@/hooks/use-cardbox-cards";
+import { useCardboxBrowse } from "@/hooks/use-cardbox-browse";
 import {
   buildBackupCards,
   persistCardImage,
@@ -48,6 +54,7 @@ import {
 
 type Screen =
   | "home"
+  | "details"
   | "all"
   | "editor"
   | "sort"
@@ -71,6 +78,7 @@ export default function HomeScreen() {
   const { styles, colors } = useCardboxStyles();
   const storage = useCardboxCards();
   const access = useCardboxAccess();
+  const browse = useCardboxBrowse();
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<{
@@ -505,6 +513,7 @@ export default function HomeScreen() {
 
   const titles: Record<Screen, string> = {
     home: "CardBox",
+    details: "卡片详情",
     all: "全部卡片",
     editor: cards.some((card) => card.id === draft?.id)
       ? "编辑卡片"
@@ -523,6 +532,81 @@ export default function HomeScreen() {
     void run(async () => {
       await access.unlock();
     });
+
+  const cardDetails = current && (
+    <CardDetails
+      card={current}
+      showSensitive={showSensitive}
+      disabled={busy}
+      onToggleSensitive={() => void run(toggleSensitive)}
+      onEdit={() => void run(editCurrent)}
+      onDelete={() => void run(deleteCurrent)}
+    />
+  );
+  const cardNavigation = current && (
+    <View style={[styles.spaced, { justifyContent: "center" }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{
+          disabled:
+            busy ||
+            cards.length < 2 ||
+            (browse.mode !== "classic" && selectedIndex === 0),
+        }}
+        disabled={
+          busy ||
+          cards.length < 2 ||
+          (browse.mode !== "classic" && selectedIndex === 0)
+        }
+        style={styles.iconButton}
+        accessibilityLabel="上一张卡片"
+        onPress={() =>
+          chooseCard(
+            cards[
+              browse.mode === "classic"
+                ? (selectedIndex + cards.length - 1) % cards.length
+                : Math.max(0, selectedIndex - 1)
+            ].id,
+          )
+        }
+      >
+        {icon(browse.mode === "classic" ? "chevron-back" : "chevron-up", 17)}
+      </Pressable>
+      <Text style={styles.counter}>
+        {selectedIndex + 1} / {cards.length}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{
+          disabled:
+            busy ||
+            cards.length < 2 ||
+            (browse.mode !== "classic" && selectedIndex === cards.length - 1),
+        }}
+        disabled={
+          busy ||
+          cards.length < 2 ||
+          (browse.mode !== "classic" && selectedIndex === cards.length - 1)
+        }
+        style={styles.iconButton}
+        accessibilityLabel="下一张卡片"
+        onPress={() =>
+          chooseCard(
+            cards[
+              browse.mode === "classic"
+                ? (selectedIndex + 1) % cards.length
+                : Math.min(cards.length - 1, selectedIndex + 1)
+            ].id,
+          )
+        }
+      >
+        {icon(
+          browse.mode === "classic" ? "chevron-forward" : "chevron-down",
+          17,
+        )}
+      </Pressable>
+    </View>
+  );
 
   if (access.locked || access.obscured) {
     return (
@@ -672,99 +756,68 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {screen === "home" && current && (
+        <BrowseModePicker
+          mode={browse.mode}
+          disabled={busy}
+          onChange={(mode) => {
+            setRevealed(null);
+            browse.selectMode(mode);
+          }}
+        />
+      )}
       {screen === "home" &&
         (current ? (
-          <ScrollView contentContainerStyle={styles.content}>
-            <View {...swipe.panHandlers}>
-              <CardFace card={current} />
-            </View>
-            <View style={[styles.spaced, { justifyContent: "center" }]}>
-              <Pressable
-                disabled={busy || cards.length < 2}
-                style={styles.iconButton}
-                accessibilityLabel="上一张卡片"
-                onPress={() =>
-                  chooseCard(
-                    cards[(selectedIndex + cards.length - 1) % cards.length].id,
-                  )
-                }
-              >
-                {icon("chevron-back", 17)}
-              </Pressable>
-              <Text style={styles.counter}>
-                {selectedIndex + 1} / {cards.length}
-              </Text>
-              <Pressable
-                disabled={busy || cards.length < 2}
-                style={styles.iconButton}
-                accessibilityLabel="下一张卡片"
-                onPress={() =>
-                  chooseCard(cards[(selectedIndex + 1) % cards.length].id)
-                }
-              >
-                {icon("chevron-forward", 17)}
-              </Pressable>
-            </View>
-            <View style={styles.surface}>
-              <View style={styles.spaced}>
-                <View style={[styles.row, styles.grow]}>
-                  <Text style={[styles.title, { fontSize: 18, flexShrink: 1 }]}>
-                    {current.name}
-                  </Text>
-                  <Text style={styles.muted}>{CARD_TYPES[current.type]}</Text>
-                </View>
-                <Pressable
-                  disabled={busy}
-                  style={styles.visibility}
-                  onPress={() => void run(toggleSensitive)}
-                  accessibilityLabel={
-                    showSensitive ? "隐藏敏感信息" : "验证并显示敏感信息"
-                  }
-                >
-                  {icon(showSensitive ? "eye-off-outline" : "eye-outline", 15)}
-                  <Text style={styles.outlineText}>
-                    {showSensitive ? "隐藏" : "显示"}
-                  </Text>
-                </Pressable>
+          browse.mode === "classic" ? (
+            <ScrollView contentContainerStyle={styles.content}>
+              <View {...swipe.panHandlers}>
+                <CardFace card={current} />
               </View>
-              <View>
-                {[
-                  [
-                    "卡号",
-                    showSensitive
-                      ? current.number
-                      : maskCardNumber(current.number),
-                  ],
-                  ["CVV", showSensitive ? current.cvv || "未填写" : "•••"],
-                  ["到期", current.expiry || "未填写"],
-                  ["备注", current.note || "暂无备注"],
-                ].map(([label, value]) => (
-                  <View key={label} style={styles.information}>
-                    <Text style={styles.label}>{label}</Text>
-                    <Text selectable={showSensitive} style={styles.value}>
-                      {value}
+              {cardNavigation}
+              {cardDetails}
+            </ScrollView>
+          ) : (
+            <View style={styles.grow}>
+              <CardBrowser
+                cards={cards}
+                selectedIndex={selectedIndex}
+                mode={browse.mode}
+                disabled={busy}
+                onSelect={chooseCard}
+                onOpen={() => {
+                  setRevealed(null);
+                  setScreen("details");
+                }}
+              />
+              {cardNavigation}
+              <View
+                style={[
+                  styles.surface,
+                  { marginHorizontal: 22, marginBottom: 16, padding: 14 },
+                ]}
+              >
+                <View style={styles.spaced}>
+                  <View style={styles.grow}>
+                    <Text style={styles.gridName} numberOfLines={1}>
+                      {current.name}
                     </Text>
+                    <Text style={styles.muted}>{CARD_TYPES[current.type]}</Text>
                   </View>
-                ))}
-              </View>
-              <View style={styles.row}>
-                <Pressable
-                  disabled={busy}
-                  style={styles.outline}
-                  onPress={() => void run(editCurrent)}
-                >
-                  <Text style={styles.outlineText}>修改</Text>
-                </Pressable>
-                <Pressable
-                  disabled={busy}
-                  style={styles.destructive}
-                  onPress={() => void run(deleteCurrent)}
-                >
-                  <Text style={styles.destructiveText}>删除</Text>
-                </Pressable>
+                  <Pressable
+                    disabled={busy}
+                    style={styles.iconButton}
+                    accessibilityLabel="查看卡片详情"
+                    onPress={() => {
+                      setRevealed(null);
+                      setScreen("details");
+                    }}
+                  >
+                    <Text style={styles.outlineText}>查看详情</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
-          </ScrollView>
+          )
         ) : (
           <View style={styles.empty}>
             {icon("wallet-outline", 68)}
@@ -774,6 +827,12 @@ export default function HomeScreen() {
             </Text>
           </View>
         ))}
+      {screen === "details" && current && (
+        <ScrollView contentContainerStyle={styles.content}>
+          <CardFace card={current} />
+          {cardDetails}
+        </ScrollView>
+      )}
 
       {screen === "all" && (
         <ScrollView contentContainerStyle={styles.content}>
