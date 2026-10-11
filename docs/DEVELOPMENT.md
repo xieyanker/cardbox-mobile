@@ -107,7 +107,9 @@ node node_modules/vitest/vitest.mjs run
 
 ### 云端构建：不要求电脑先安装 Android Studio
 
-已有 `eas.json` 的 `preview` 配置会生成内部安装用 APK。需要 Expo 账号、对应项目权限和 Android 签名配置；现有文件没有配置 EAS project ID，需要确认关联情况。
+已有 `eas.json` 的 `preview` 配置会生成内部安装用 APK。`app.config.ts` 已关联用户确认的 Expo 项目 `@xieyanker/cardbox-mobile`，Project ID 为 `9c5810b4-c04a-44b3-8ef3-9b10b00b859b`。`cli.appVersionSource` 使用 `local`，继续读取仓库中的应用版本与 Android 构建编号；Android 构建镜像显式使用 `auto`，由 EAS 按项目 SDK 选择。构建仍需要 Expo 账号、对应项目权限和 Android 签名配置。
+
+2026-10-11 用户从 GitHub 网页发起的构建在配置阶段因缺少 `extra.eas.projectId` 失败。本次仅修复构建关联，按用户要求提交至 `main`，保留版本 `3.0.2` / Android 构建编号 7，不新建或移动标签。网页重试时 Git ref 使用 `main`，平台选择 Android，EAS Build profile 填 `preview`，Environment 保持 Default，不启用自动提交商店；原 `3.0.2` 标签不包含本次配置修复。项目 ID 的解析检查不等于 APK 编译通过。
 
 在配置完成后，可运行：
 
