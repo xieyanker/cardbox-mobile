@@ -1,6 +1,10 @@
 <p align="center">
-  <img src="assets/images/icon.png" width="120" alt="CardBox 应用图标：包含 CardBox 字样的卡包与叠放卡片" />
+  <img src="assets/images/icon.png" width="120" align="middle" alt="CardBox 应用图标：包含 CardBox 字样的卡包与叠放卡片" />
+  &nbsp;&nbsp;
+  <img src="docs/images/android-wallet-real.jpg" width="210" align="middle" alt="CardBox Android 真机截图：实际添加的银行卡在钱包模式中展示，右上角首页菜单展开" />
 </p>
+
+<p align="center">Android 真机截图 · 钱包模式与首页菜单</p>
 
 # CardBox
 
@@ -26,7 +30,7 @@
 
 钱包、堆叠和聚焦支持上下滑动、点击卡片查看详情；经典保留左右滑动和直接查看详情。应用会记住上次选择的模式与模式排列顺序。
 
-以上及下方截图采集自 **3.0.2 当前界面的 Web 移动视口预览**，使用虚构卡片，卡号与 CVV 保持隐藏。它们展示实际页面布局；Android 的系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
+上述四种浏览模式及下方页面示例采集自 **3.0.2 当前界面的 Web 移动视口预览**，使用虚构卡片，卡号与 CVV 保持隐藏；README 开头为用户提供的 Android 真机使用截图。示例展示实际页面布局，Android 的系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
 
 ## 可以做什么
 
