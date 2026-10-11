@@ -10,9 +10,11 @@
 
 **把银行卡装进自己的数字卡包。** CardBox 是一款无需账号、资料保存在本机的卡片管理应用，支持自定义卡面、四种浏览模式、敏感信息隐藏和密码加密备份。
 
-当前版本 **3.0.2** · Android 构建编号 **7** · 作者 **xieyanker**
+当前开发版本 **4.0.0** · Android 构建编号 **8** · 作者 **xieyanker** · 待用户验收封板
 
-**[下载 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk)** · [版本发布页](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) · [完整功能与使用说明](docs/FEATURES.md)
+**[下载已发布的 3.0.2 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk)** · [3.0.2 发布页](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) · [完整功能与使用说明](docs/FEATURES.md)
+
+4.0.0 已加入到期时间自动格式输入：单个输入框显示 `__/__`，连续输入 `0726` 自动显示 `07/26`。旧卡包与备份读取格式保持兼容；后续功能和真机验收见 [4.0 开发记录](docs/CARDBOX_4.0_REQUIREMENTS.md)。
 
 ## 四种卡包，一眼看懂
 
@@ -30,13 +32,13 @@
 
 钱包、堆叠和聚焦支持上下滑动、点击卡片查看详情；经典保留左右滑动和直接查看详情。应用会记住上次选择的模式与模式排列顺序。
 
-上述四种浏览模式及下方页面示例采集自 **3.0.2 当前界面的 Web 移动视口预览**，使用虚构卡片，卡号与 CVV 保持隐藏；README 开头为用户提供的 Android 真机使用截图。示例展示实际页面布局，Android 的系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
+上述四种浏览模式及下方页面示例采集自 **已发布的 3.0.2 界面的 Web 移动视口预览**，使用虚构卡片，卡号与 CVV 保持隐藏；README 开头为用户提供的 Android 真机使用截图。示例保留采集时的版本信息，4.0.0 的到期时间掩码以当前代码为准。Android 的系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
 
 ## 可以做什么
 
 | 功能 | 使用体验 |
 | --- | --- |
-| 卡片管理 | 添加、修改和删除卡片；支持借记卡、信用卡、虚拟卡，以及名称、卡号、CVV、到期时间和备注。 |
+| 卡片管理 | 添加、修改和删除卡片；支持借记卡、信用卡、虚拟卡，以及名称、卡号、CVV、到期时间和备注；到期时间输入四位数字自动添加斜杠。 |
 | 自定义卡面 | 从本机选择卡面图片，按卡片比例裁剪并预览确认。 |
 | 四种浏览模式 | 经典、钱包、堆叠、聚焦；支持切换、顺序调整、自动保存和恢复默认顺序。 |
 | 全部卡片与排序 | 双列平铺浏览全部卡片，使用上下按钮调整卡片顺序。 |
@@ -72,7 +74,7 @@
 
 ## 下载与开始使用
 
-1. 从 [GitHub Releases](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) 下载 `CardBox-3.0.2-android.apk`，安装到 Android 手机。
+1. 从 [已发布的 3.0.2 GitHub Release](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) 下载 `CardBox-3.0.2-android.apk`，安装到 Android 手机。4.0.0 正在开发，尚未发布 APK。
 2. 首次打开完成系统身份验证，在右上角菜单选择“添加卡片”。
 3. 添加卡片后选择喜欢的浏览模式，并定期通过“备份管理 → 导出备份”保存加密备份。
 
@@ -104,7 +106,8 @@ pnpm dev:mobile
 | [图标设计](docs/design/ICON.md) | 图标、Android 自适应 / 单色图标与启动画面素材。 |
 | [开发与交接指南](docs/DEVELOPMENT.md) | 环境、架构、编译和 Git 约定。 |
 | [Android 验收步骤](docs/TESTING.md) | 真机复测步骤及已确认的结果。 |
+| [CardBox 4.0 开发记录](docs/CARDBOX_4.0_REQUIREMENTS.md) | 当前开发范围、兼容要求与待验收项目。 |
 | [CardBox 3.0 需求与进度](docs/CARDBOX_3.0_REQUIREMENTS.md) | 功能实现、阶段提交与验收进度。 |
 | [版本变更记录](CHANGELOG.md) | 各版本变化与检查记录。 |
 
-后续开发直接在 `main` 上进行。应用版本统一由 `package.json` 管理，Android 构建编号由 `app.config.ts` 管理；用户亲自验证通过并明确授权后才创建封板 tag，文档与展示图片更新只提交到 `main`。4.0 当前开发与旧数据兼容要求见 [4.0 开发记录](docs/CARDBOX_4.0_REQUIREMENTS.md)。
+后续开发直接在 `main` 上进行。每次开始新版本时立即更新代码和当前文档版本号；应用版本统一由 `package.json` 管理，Android 构建编号由 `app.config.ts` 管理。用户亲自验证通过并明确授权后才创建封板 tag，文档与展示图片更新只提交到 `main`。4.0 当前开发与旧数据兼容要求见 [4.0 开发记录](docs/CARDBOX_4.0_REQUIREMENTS.md)。

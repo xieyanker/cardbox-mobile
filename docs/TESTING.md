@@ -2,7 +2,9 @@
 
 更新日期：2026-10-11。CardBox 2.0.0 已由用户通过 USB / Expo Go 在 Android 手机上完成全部功能验收，并确认当前版本可以提交、推送。3.0.2 后续已通过 EAS 云构建，Android APK 已发布到 [GitHub Releases](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2)；完整 APK 真机验收反馈仍待记录。
 
-当前代码版本：`3.0.2`（Android 构建编号 7）；作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。3.0.2 统一菜单为四字名称；3.0.1 已完成 Android 合成密码性能测试，用户已确认备份提速效果。
+当前代码版本：`4.0.0`（Android 构建编号 8），正在开发；作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。4.0.0 新增到期时间掩码输入，完整验收清单见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。每次开始新版本即更新代码及文档版本号，用户亲自验收并授权后才创建 tag。
+
+4.0.0 待真机复测：关于页显示 `4.0.0`；到期时间单个输入框连续输入 `0726` 自动显示 `07/26`，可退格到空、粘贴和替换；原有卡包、图片、排序和设置正常，旧备份仍能导入、编辑及再次导出。本轮未发布 4.0.0 APK，以下 3.0.2 内容为历史构建与验收记录。
 
 3.0.2 复测：右上角一级菜单为添加卡片、卡片排序、备份管理、自动锁定、浏览模式、关于应用；“浏览模式”和“关于应用”分别打开同名页面，关于页版本为 3.0.2。
 
