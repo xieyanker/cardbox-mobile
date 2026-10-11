@@ -7,6 +7,7 @@ CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目
 - [设计说明与原型图](docs/design/README.md)：用户提供的原始设计图、页面说明、当前实现与原型的差异。
 - [开发与交接指南](docs/DEVELOPMENT.md)：开发环境、运行命令、Git 状态、验证结果和后续开发顺序。
 - [Android 验收步骤](docs/TESTING.md)：Expo Go 连接方式、关键功能和真机验证记录。
+- [CardBox 3.0 需求记录](docs/CARDBOX_3.0_REQUIREMENTS.md)：待开发的六项需求与分批建议，等待用户后续指示开始。
 
 ## 当前实现
 
@@ -42,6 +43,10 @@ pnpm dev:mobile
 ```
 
 Android 手机使用 SDK 54 对应的 Expo Go，在同一局域网扫码预览。该流程不编译 CardBox APK，不消耗 EAS 云构建次数。Web 布局预览使用 `pnpm dev:metro`；生物识别、设备密钥、图片文件及备份恢复需要在移动设备上验收。安装依赖和 APK 构建方式见[开发与交接指南](docs/DEVELOPMENT.md)。
+
+## 版本管理
+
+应用版本号以 `package.json` 的 `version` 为准，Expo 配置和关于页读取同一个值，无需单独维护 `VERSION` 文件。后续开发直接在 `main` 分支进行；每个版本完成并验证后，在对应的发布提交上创建同名 Git 标签（例如 `2.0.0`），再推送提交与标签。Android 构建版本号 `versionCode` 在 `app.config.ts` 中单独递增。具体操作见[开发与交接指南](docs/DEVELOPMENT.md)。
 
 ## 文档依据
 
