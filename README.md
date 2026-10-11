@@ -1,63 +1,106 @@
+<p align="center">
+  <img src="assets/images/icon.png" width="120" alt="CardBox 应用图标：包含 CardBox 字样的卡包与叠放卡片" />
+</p>
+
 # CardBox
 
-CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前代码版本为 `3.0.2`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
+**把银行卡装进自己的数字卡包。** CardBox 是一款无需账号、资料保存在本机的卡片管理应用，支持自定义卡面、四种浏览模式、敏感信息隐藏和密码加密备份。
 
-## 项目文档
+当前版本 **3.0.2** · Android 构建编号 **7** · 作者 **xieyanker**
 
-- [设计说明与原型图](docs/design/README.md)：用户提供的原始设计图、页面说明、当前实现与原型的差异。
-- [开发与交接指南](docs/DEVELOPMENT.md)：开发环境、运行命令、Git 状态、验证结果和后续开发顺序。
-- [Android 验收步骤](docs/TESTING.md)：Expo Go 连接方式、关键功能和真机验证记录。
-- [CardBox 3.0 需求与进度](docs/CARDBOX_3.0_REQUIREMENTS.md)：六项功能实现、阶段提交、自动验证与待真机验收事项。
-- [版本变更记录](CHANGELOG.md)：每个版本的功能与验证状态。
+**[下载 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk)** · [版本发布页](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) · [完整功能与使用说明](docs/FEATURES.md)
 
-## 当前实现
+## 四种卡包，一眼看懂
 
-客户端包含卡片添加、修改、删除、查看、卡号隐藏、生物识别验证、卡面选择与裁剪、排序、密码备份和后台自动锁定。核心卡片数据通过 AsyncStorage 保存在本机，设备密钥通过 SecureStore 保存；卡片业务目前没有接入后端同步。
+首页默认按 **经典 → 钱包 → 堆叠 → 聚焦** 排列，点击顶部选项即可切换，也可以在“浏览模式”中调整顺序。
 
-3.0.2 将菜单名称统一为四字：“浏览模式”用于调整首页模式顺序，“关于应用”展示版本和作者。
+<table>
+  <tr><th>经典 · 左右切换</th><th>钱包 · 卡槽层次</th><th>堆叠 · 卡片叠放</th><th>聚焦 · 当前卡片突出</th></tr>
+  <tr>
+    <td><img src="docs/images/home-classic.png" width="190" alt="经典模式：首页卡面及隐藏敏感信息的详情" /></td>
+    <td><img src="docs/images/home-wallet.png" width="190" alt="钱包模式：卡片像实体钱包一样分层排列" /></td>
+    <td><img src="docs/images/home-stack.png" width="190" alt="堆叠模式：多张卡片叠放显示" /></td>
+    <td><img src="docs/images/home-focus.png" width="190" alt="聚焦模式：突出选中的卡片，展示前后卡片" /></td>
+  </tr>
+</table>
 
-3.0.0 重新设计包含 CardBox 字样的应用图标，将首页添加入口移到右上角菜单第一项，简化备份管理菜单。首页增加堆叠、聚焦与钱包浏览，保留经典左右滑动及平铺浏览，并记住模式选择。备份优化复用密码派生状态、提前验证密码，并限制图片 I/O 并发；新 v4 备份保留 120,000 轮派生，可读取旧 v2 / v3。桌面 JS 对照加解密约快 4–6 倍，数据与边界见[性能记录](docs/performance/BACKUP_3.0.md)。
+钱包、堆叠和聚焦支持上下滑动、点击卡片查看详情；经典保留左右滑动和直接查看详情。应用会记住上次选择的模式与模式排列顺序。
 
-3.0.1 将默认浏览模式顺序改为经典、钱包、堆叠、聚焦，增加“显示模式设置”以调整并保存排列；移动端密码派生使用离线系统 WebCrypto。Android 16 真机测得单块派生从约 30 秒降至 44 毫秒，约 0.88 MB 合成内容的加密 / 解密约 2.7 秒，错误密码检查 47 毫秒；不含原生文件 I/O 和系统验证。已通过类型检查、71 条业务测试、21 项 Web 回归及浏览模式操作检查；实际用户备份流程、动画体验和 APK 图标继续按[验收说明](docs/TESTING.md)复测，目前未生成新 APK。
+以上及下方截图采集自 **3.0.2 当前界面的 Web 移动视口预览**，使用虚构卡片，卡号与 CVV 保持隐藏。它们展示实际页面布局；Android 的系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
 
-首轮开发已修复存储初始化、串行写入、设备密钥初始化、身份验证入口、图片持久保存和排序问题，并对照原型调整主界面。2.0.0 已通过类型检查、45 条业务测试、21 项 Web 操作回归检查和 Android 开发代码打包；2026-10-11 用户确认全部验收完成，接受本版本作为当前开发基线。
+## 可以做什么
 
-2026-10-11 后续真机反馈：用户复测 3.0.1 后表示“这次可以了，很快”，确认备份提速效果可接受。模式顺序、动画及 APK 图标的逐项验收反馈仍待记录。
+| 功能 | 使用体验 |
+| --- | --- |
+| 卡片管理 | 添加、修改和删除卡片；支持借记卡、信用卡、虚拟卡，以及名称、卡号、CVV、到期时间和备注。 |
+| 自定义卡面 | 从本机选择卡面图片，按卡片比例裁剪并预览确认。 |
+| 四种浏览模式 | 经典、钱包、堆叠、聚焦；支持切换、顺序调整、自动保存和恢复默认顺序。 |
+| 全部卡片与排序 | 双列平铺浏览全部卡片，使用上下按钮调整卡片顺序。 |
+| 敏感信息保护 | 卡号与 CVV 默认隐藏，显示信息及敏感操作使用系统身份验证。 |
+| 后台自动锁定 | 切到后台遮挡内容，可设置立即、1 分钟、5 分钟或不自动锁定；冷启动仍需验证。 |
+| 加密备份 | 导出包含卡片资料与卡面图片的 `.cardbox` 文件；输入密码后导入，替换前再次确认。 |
+| 浅色 / 深色主题 | 页面配色跟随系统，卡包、菜单和设置保持一致风格。 |
 
-2.0.0 将导入、导出归入“备份管理”二级菜单，补充作者、版本和可打开的 GitHub 地址。备份密码派生改为定时让出界面线程，保持原有参数与 v2 / v3 格式兼容；Android 目录选择返回后等待前台恢复，再保存并回读校验文件。用户通过 USB / Expo Go 完成 Android 功能验收，并确认所选目录中存在非空 `.cardbox` 导出文件。后续优化另行迭代，详见[验收记录](docs/TESTING.md)。
+## 主要页面
 
-| 路径                                                       | 用途                                  |
-| ---------------------------------------------------------- | ------------------------------------- |
-| `app/(tabs)/index.tsx`                                     | 核心卡片界面及主要业务逻辑            |
-| `app/_layout.tsx`                                          | 应用入口、导航、主题和 Provider       |
-| `lib/cardbox-security.ts`                                  | 本地数据与备份加解密                  |
-| `lib/cardbox-pbkdf2.ts`                                    | 保持界面响应的备份密码派生            |
-| `components/cardbox/card-browser.tsx` / `hooks/use-cardbox-browse.ts` | 三种动画浏览模式与本机模式偏好 |
-| `shared/app-info.ts`                                       | 关于页作者、仓库地址与版本信息        |
-| `lib/cardbox-repository.ts` / `hooks/use-cardbox-cards.ts` | 卡片加载、串行写入及错误恢复          |
-| `lib/cardbox-access.ts` / `hooks/use-cardbox-access.ts`    | 身份验证、后台遮挡及自动锁定          |
-| `lib/cardbox-files.ts`                                     | 图片持久化与备份图片恢复              |
-| `shared/cardbox.ts` / `components/cardbox/`                | 数据校验、排序规则及主题界面组件      |
-| `server/`                                                  | Express / tRPC 后端模板及认证基础代码 |
-| `drizzle/`                                                 | MySQL 用户表定义与迁移                |
-| `app.config.ts`                                            | Expo 应用配置、版本和原生插件         |
-| `eas.json`                                                 | Android preview APK 构建配置          |
-| `docs/`                                                    | 设计与开发文档                        |
+<table>
+  <tr><th>全部卡片</th><th>添加卡片</th><th>卡片详情</th></tr>
+  <tr>
+    <td><img src="docs/images/all-cards.png" width="250" alt="全部卡片双列浏览页面" /></td>
+    <td><img src="docs/images/card-editor.png" width="250" alt="添加卡片页面：卡面预览、类型和资料填写" /></td>
+    <td><img src="docs/images/card-details.png" width="250" alt="卡片详情页面：隐藏卡号和 CVV，提供修改与删除" /></td>
+  </tr>
+  <tr><th>四字菜单</th><th>浏览模式排序</th><th>加密备份</th></tr>
+  <tr>
+    <td><img src="docs/images/menu.png" width="250" alt="首页右上角菜单，第一项为添加卡片" /></td>
+    <td><img src="docs/images/browse-settings.png" width="250" alt="浏览模式设置：上下调整顺序与恢复默认" /></td>
+    <td><img src="docs/images/backup-export.png" width="250" alt="导出备份页面：设置密码并生成加密备份" /></td>
+  </tr>
+  <tr><th>自动锁定</th><th>深色钱包</th><th>图标与关于应用</th></tr>
+  <tr>
+    <td><img src="docs/images/lock-settings.png" width="250" alt="自动锁定设置：立即、1 分钟、5 分钟、不自动锁定" /></td>
+    <td><img src="docs/images/home-dark.png" width="250" alt="系统深色主题下的钱包浏览模式" /></td>
+    <td><img src="docs/images/about.png" width="250" alt="关于应用：CardBox 新图标、3.0.2 版本、作者与 GitHub 入口" /></td>
+  </tr>
+</table>
 
-## 快速预览
+更多页面和操作步骤见 [完整功能与使用说明](docs/FEATURES.md)，包括卡片排序、备份二级菜单与导入流程。
 
-准备好 Node.js、pnpm 和项目依赖后，在项目根目录运行：
+## 下载与开始使用
 
-```powershell
+1. 从 [GitHub Releases](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) 下载 `CardBox-3.0.2-android.apk`，安装到 Android 手机。
+2. 首次打开完成系统身份验证，在右上角菜单选择“添加卡片”。
+3. 添加卡片后选择喜欢的浏览模式，并定期通过“备份管理 → 导出备份”保存加密备份。
+
+APK 可以独立运行。Expo Go 中的卡包与独立安装的 CardBox 分开，如需迁移，请先在 Expo Go 导出备份，再在 CardBox 中导入。应用的本地卡片功能无需登录或云同步。
+
+## 数据与备份
+
+卡片字段在本机加密保存，移动端设备密钥保存在系统安全存储中。自定义卡面图片保存在应用私有目录；导出的备份会把卡片字段和图片一起加密。卡号隐藏控制应用绘制的文字，卡面照片中的号码需要自行遮挡。
+
+当前版本导出 v4 格式 `.cardbox`，兼容导入旧 v2 / v3 备份；2.0.0 无法导入新 v4 备份。导入会替换当前卡包，请在确认前备份现有卡片，并保管好备份文件与密码。
+
+3.0.1 的备份提速已得到用户 Android 真机复测确认。具体测量条件、结果和文件 I/O 边界见 [备份性能记录](docs/performance/BACKUP_3.0.md)。
+
+## 开发与项目文档
+
+项目使用 Expo SDK 54、React Native、TypeScript 和 pnpm。准备好 Node.js 与 `pnpm@9.12.0` 后：
+
+```sh
+pnpm install --frozen-lockfile
 pnpm dev:mobile
 ```
 
-Android 手机使用 SDK 54 对应的 Expo Go，在同一局域网扫码预览。该流程不编译 CardBox APK，不消耗 EAS 云构建次数。Web 布局预览使用 `pnpm dev:metro`；生物识别、设备密钥、图片文件及备份恢复需要在移动设备上验收。安装依赖和 APK 构建方式见[开发与交接指南](docs/DEVELOPMENT.md)。
+手机预览使用 SDK 54 对应的 Expo Go。Web 预览可运行 `pnpm dev:metro`。开发预览与 APK 编译的环境准备、检查命令和具体步骤见 [开发与交接指南](docs/DEVELOPMENT.md)。
 
-## 版本管理
+| 文档 | 内容 |
+| --- | --- |
+| [功能与使用说明](docs/FEATURES.md) | 最新功能、截图、菜单和使用步骤。 |
+| [设计说明与原型图](docs/design/README.md) | 原始原型与设计演进。 |
+| [图标设计](docs/design/ICON.md) | 图标、Android 自适应 / 单色图标与启动画面素材。 |
+| [开发与交接指南](docs/DEVELOPMENT.md) | 环境、架构、编译和 Git 约定。 |
+| [Android 验收步骤](docs/TESTING.md) | 真机复测步骤及已确认的结果。 |
+| [CardBox 3.0 需求与进度](docs/CARDBOX_3.0_REQUIREMENTS.md) | 功能实现、阶段提交与验收进度。 |
+| [版本变更记录](CHANGELOG.md) | 各版本变化与检查记录。 |
 
-应用版本号以 `package.json` 的 `version` 为准，Expo 配置和关于页读取同一个值，无需单独维护 `VERSION` 文件。后续开发直接在 `main` 分支进行；每个版本完成并验证后，在对应的发布提交上创建同名 Git 标签（例如 `2.0.0`），再推送提交与标签。Android 构建版本号 `versionCode` 在 `app.config.ts` 中单独递增。具体操作见[开发与交接指南](docs/DEVELOPMENT.md)。
-
-## 文档依据
-
-文档于 2026-10-10 新增。设计目标依据用户提供的原型图；当前实现依据本地源码和配置；验证结论依据实际检查。原型图中的目标与当前已实现行为在设计说明中分别记录。
+后续开发直接在 `main` 上进行。应用版本统一由 `package.json` 管理，Android 构建编号由 `app.config.ts` 管理；功能版本完成后创建对应 tag，文档与展示图片更新只提交到 `main`。

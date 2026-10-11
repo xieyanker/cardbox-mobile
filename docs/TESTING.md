@@ -1,10 +1,12 @@
 # Android 验收步骤
 
-更新日期：2026-10-11。CardBox 2.0.0 已由用户通过 USB / Expo Go 在 Android 手机上完成全部功能验收，并确认当前版本可以提交、推送。未运行 EAS 云构建，也未生成正式 APK。
+更新日期：2026-10-11。CardBox 2.0.0 已由用户通过 USB / Expo Go 在 Android 手机上完成全部功能验收，并确认当前版本可以提交、推送。3.0.2 后续已通过 EAS 云构建，Android APK 已发布到 [GitHub Releases](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2)；完整 APK 真机验收反馈仍待记录。
 
 当前代码版本：`3.0.2`（Android 构建编号 7）；作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。3.0.2 统一菜单为四字名称；3.0.1 已完成 Android 合成密码性能测试，用户已确认备份提速效果。
 
 3.0.2 复测：右上角一级菜单为添加卡片、卡片排序、备份管理、自动锁定、浏览模式、关于应用；“浏览模式”和“关于应用”分别打开同名页面，关于页版本为 3.0.2。
+
+3.0.2 APK 构建：用户提供的 EAS 页面显示构建提交 `eb81f42`，版本 `3.0.2 (7)`，状态 Succeeded。上传附件前从 APK 清单确认包名 `com.app.cardboxmobile`、版本 3.0.2、构建编号 7，ZIP 完整性检查通过；GitHub 附件与本地 APK 的 SHA-256 一致。README 与 [功能说明](FEATURES.md) 使用当前版本的 Web 移动视口截图和虚构卡片，未读取用户真实卡包，不据此增加 Android 真机验收结论。
 
 2026-10-11 真机复测反馈：手机重新打开并确认运行 3.0.1 后，用户表示“这次可以了，很快”，认可本轮备份性能修复。未提供各操作的具体秒数，合成计时仍单独记录；浏览模式顺序、动画和安装包图标尚无逐项验收反馈。
 
