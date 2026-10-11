@@ -237,6 +237,9 @@ export default function HomeScreen() {
 
   function startNew() {
     ensureAccessible();
+    setMenuOpen(false);
+    setBackupMenuOpen(false);
+    setRevealed(null);
     setDraft({
       id: randomUUID(),
       name: "",
@@ -767,7 +770,7 @@ export default function HomeScreen() {
             {icon("wallet-outline", 68)}
             <Text style={styles.heading}>还没有卡片</Text>
             <Text style={[styles.muted, styles.centerText]}>
-              点击右下角 + 添加第一张卡片{"\n"}开始建立你的专属卡包
+              从右上角菜单选择“添加卡片”{"\n"}开始建立你的专属卡包
             </Text>
           </View>
         ))}
@@ -950,7 +953,11 @@ export default function HomeScreen() {
 
       {screen === "about" && (
         <View style={styles.empty}>
-          {icon("wallet-outline", 56)}
+          <Image
+            source={require("../../assets/images/icon.png")}
+            style={{ width: 112, height: 112, borderRadius: 24 }}
+            accessibilityLabel="CardBox 应用图标"
+          />
           <Text style={styles.heading}>CardBox</Text>
           <Text style={styles.text}>版本 {APP_VERSION}</Text>
           <Text style={styles.text}>作者：{APP_AUTHOR}</Text>
@@ -976,7 +983,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {(screen === "home" || screen === "all") && (
+      {screen === "all" && (
         <Pressable
           disabled={busy}
           onPress={() => void run(async () => startNew())}
@@ -1014,6 +1021,7 @@ export default function HomeScreen() {
                   ["import", "cloud-download-outline", "导入备份"],
                 ] as const)
               : ([
+                  ["add", "add-outline", "添加卡片"],
                   ["sort", "swap-vertical-outline", "卡片排序"],
                   ["backup", "folder-open-outline", "备份管理"],
                   ["settings", "lock-closed-outline", "自动锁定"],
@@ -1022,14 +1030,17 @@ export default function HomeScreen() {
             ).map(([page, name, label]) => (
               <Pressable
                 key={page}
+                accessibilityLabel={label}
+                disabled={busy}
                 style={styles.menuItem}
-                onPress={() =>
-                  page === "backup" ? setBackupMenuOpen(true) : openPage(page)
-                }
+                onPress={() => {
+                  if (page === "add") void run(async () => startNew());
+                  else if (page === "backup") setBackupMenuOpen(true);
+                  else openPage(page);
+                }}
               >
                 {icon(name, 18)}
                 <Text style={[styles.text, styles.grow]}>{label}</Text>
-                {page === "backup" && icon("chevron-forward", 16)}
               </Pressable>
             ))}
           </View>

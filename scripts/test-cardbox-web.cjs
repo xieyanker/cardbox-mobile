@@ -39,7 +39,7 @@ async function menu(name) {
   await text(name).click();
 }
 async function add({ name, number, type, image = false }) {
-  await label("添加卡片").click();
+  await menu("添加卡片");
   await label("卡片名称").fill(name);
   await label("卡号").fill(number);
   await label("CVV").fill("123");
@@ -99,7 +99,7 @@ async function add({ name, number, type, image = false }) {
       await visible("导入备份");
       await label("返回一级菜单").click();
       await text("关于").click();
-      await visible("版本 2.0.0");
+      await visible(`版本 ${require("../package.json").version}`);
       await visible("作者：xieyanker");
       await visible("https://github.com/xieyanker/cardbox-mobile");
       await label("打开 GitHub 项目").waitFor({ state: "visible" });
@@ -129,7 +129,7 @@ async function add({ name, number, type, image = false }) {
   await step(
     "invalid form fields show actionable errors without saving",
     async () => {
-      await label("添加卡片").click();
+      await menu("添加卡片");
       await label("保存卡片").click();
       await visible("请输入卡片名称。");
       await label("卡片名称").fill("无效测试卡");
@@ -148,7 +148,7 @@ async function add({ name, number, type, image = false }) {
     },
   );
   await step("card image button has a usable touch area", async () => {
-    await label("添加卡片").click();
+    await menu("添加卡片");
     const bounds = await text("更换卡面图片")
       .locator("..")
       .locator("..")

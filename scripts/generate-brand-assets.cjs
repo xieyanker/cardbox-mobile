@@ -9,7 +9,7 @@ const {
 } = require("@expo/image-utils");
 
 async function main() {
-  const projectRoot = path.resolve(__dirname, "..");
+  const projectRoot = path.dirname(require.resolve("../package.json"));
   const source = (name) => path.join(projectRoot, "assets/branding", name);
   const output = (name) => path.join(projectRoot, "assets/images", name);
   const exports = [
