@@ -45,6 +45,7 @@ import { APP_AUTHOR, APP_REPOSITORY_URL, APP_VERSION } from "@/shared/app-info";
 import {
   CARD_TONES,
   CARD_TYPES,
+  backupSchema,
   MAX_BACKUP_BYTES,
   lockTimeoutLabel,
   moveCard,
@@ -484,20 +485,28 @@ export default function HomeScreen() {
     if (!password.trim()) throw new Error("请输入备份密码。");
     if (!backupAsset) throw new Error("请先选择 .cardbox 备份文件。");
     if (!(await authenticate("验证身份后恢复卡片备份"))) return;
+    setBackupProgress("正在读取备份文件…");
     const raw = await readBackupFile(backupAsset);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    setBackupProgress("正在解密备份，请稍候…");
-    const input: unknown = JSON.parse(await decryptBackup(raw, password));
-    ensureAccessible();
-    const restored = await restoreBackupCards(input);
+    setBackupProgress("正在验证备份密码…");
+    const decrypted = await decryptBackup(raw, password);
+    let input: unknown;
     try {
-      const description = storage.ready
-        ? `将以备份中的 ${restored.cards.length} 张卡片替换当前卡包。是否继续？`
-        : `将恢复备份中的 ${restored.cards.length} 张卡片。无法读取的原始数据会另存到本机，供后续排查。是否继续？`;
-      if (!(await askConfirmation("恢复备份", description))) {
-        await restored.discard();
-        return;
-      }
+      input = JSON.parse(decrypted);
+    } catch {
+      throw new Error("密码不正确或备份已损坏。");
+    }
+    const parsed = backupSchema.parse(input);
+    ensureAccessible();
+    const description = storage.ready
+      ? `将以备份中的 ${parsed.cards.length} 张卡片替换当前卡包。是否继续？`
+      : `将恢复备份中的 ${parsed.cards.length} 张卡片。无法读取的原始数据会另存到本机，供后续排查。是否继续？`;
+    setBackupProgress("");
+    if (!(await askConfirmation("恢复备份", description))) return;
+    ensureAccessible();
+    setBackupProgress("正在恢复卡片和图片…");
+    const restored = await restoreBackupCards(parsed);
+    try {
       ensureAccessible();
       if (storage.ready) await storage.update(() => restored.cards);
       else await storage.recover(restored.cards);

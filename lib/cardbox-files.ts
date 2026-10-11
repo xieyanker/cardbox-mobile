@@ -13,10 +13,39 @@ function imageDirectory() {
   return `${FileSystem.documentDirectory}cardbox-images/`;
 }
 
-async function newImagePath(extension = "jpg") {
-  const directory = imageDirectory();
-  await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+async function newImagePath(extension = "jpg", preparedDirectory?: string) {
+  const directory = preparedDirectory ?? imageDirectory();
+  if (!preparedDirectory)
+    await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
   return `${directory}${randomUUID()}.${extension}`;
+}
+
+/** Bound bridge I/O, preserve input order, and wait for all in-flight writes before rollback. */
+async function mapFiles<T, R>(
+  items: T[],
+  action: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const result = new Array<R>(items.length);
+  let next = 0,
+    failed = false,
+    failure: unknown;
+  const workers = Array.from(
+    { length: Math.min(4, items.length) },
+    async () => {
+      while (!failed && next < items.length) {
+        const index = next++;
+        try {
+          result[index] = await action(items[index]);
+        } catch (error) {
+          if (!failed) failure = error;
+          failed = true;
+        }
+      }
+    },
+  );
+  await Promise.all(workers);
+  if (failed) throw failure;
+  return result;
 }
 
 export async function persistCardImage(uri: string) {
@@ -35,24 +64,19 @@ export async function persistCardImage(uri: string) {
 }
 
 export async function buildBackupCards(cards: Card[]): Promise<BackupCard[]> {
-  const backup = [];
-  for (const card of cards) {
-    if (!card.image) {
-      backup.push(card);
-      continue;
-    }
+  const backup = await mapFiles(cards, async (card): Promise<BackupCard> => {
+    if (!card.image) return card;
     const dataImage =
       /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(
         card.image,
       );
     if (dataImage) {
-      backup.push({
+      return {
         ...card,
         image: undefined,
         imageData: dataImage[2],
         imageMime: dataImage[1] as BackupCard["imageMime"],
-      });
-      continue;
+      };
     }
     if (Platform.OS === "web")
       throw new Error(`无法备份“${card.name}”的卡面，请重新选择图片。`);
@@ -73,13 +97,13 @@ export async function buildBackupCards(cards: Card[]): Promise<BackupCard[]> {
         : /\.webp$/i.test(card.image)
           ? "image/webp"
           : "image/jpeg";
-      backup.push({ ...card, image: undefined, imageData, imageMime });
+      return { ...card, image: undefined, imageData, imageMime };
     } catch {
       throw new Error(
         `“${card.name}”的卡面无法读取，备份未生成。请先重新选择卡面。`,
       );
     }
-  }
+  });
   return backupSchema.parse({ version: 3, cards: backup }).cards;
 }
 
@@ -99,16 +123,20 @@ export async function restoreBackupCards(
     );
   };
   try {
-    const restored: Card[] = [];
-    for (const card of cards) {
+    let directory: string | undefined;
+    if (Platform.OS !== "web" && cards.some((card) => card.imageData)) {
+      directory = imageDirectory();
+      await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+    }
+    const restored = await mapFiles(cards, async (card): Promise<Card> => {
       const { imageData, imageMime, ...fields } = card;
       if (imageData) {
         const mime = imageMime ?? "image/jpeg";
         if (Platform.OS === "web")
-          restored.push({
+          return {
             ...fields,
             image: `data:${mime};base64,${imageData}`,
-          });
+          };
         else {
           const uri = await newImagePath(
             mime === "image/png"
@@ -116,20 +144,21 @@ export async function restoreBackupCards(
               : mime === "image/webp"
                 ? "webp"
                 : "jpg",
+            directory,
           );
           created.push(uri);
           await FileSystem.writeAsStringAsync(uri, imageData, {
             encoding: FileSystem.EncodingType.Base64,
           });
-          restored.push({ ...fields, image: uri });
+          return { ...fields, image: uri };
         }
       } else if (
         card.image &&
         !/^data:image\/(jpeg|png|webp);base64,/.test(card.image)
       ) {
         throw new Error(`备份缺少“${card.name}”的卡面内容，无法完整恢复。`);
-      } else restored.push(fields);
-    }
+      } else return fields;
+    });
     return { cards: restored, discard };
   } catch (error) {
     await discard();
@@ -142,7 +171,8 @@ export async function readBackupFile(asset: {
   size?: number;
   file?: File;
 }): Promise<string> {
-  if (asset.size && asset.size > MAX_BACKUP_BYTES)
+  const size = asset.size ?? asset.file?.size;
+  if (size && size > MAX_BACKUP_BYTES)
     throw new Error("备份不能超过 50 MB。");
   if (Platform.OS === "web" && asset.file) return asset.file.text();
   const info = await FileSystem.getInfoAsync(asset.uri);

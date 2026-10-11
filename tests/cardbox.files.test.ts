@@ -120,6 +120,53 @@ describe("card images and backup restores", () => {
     expect(files.remove).toHaveBeenCalledTimes(2);
   });
 
+  it("waits for an in-flight image write before cleaning all partial files", async () => {
+    let finish!: () => void;
+    const writing = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    files.write
+      .mockImplementationOnce(() => writing)
+      .mockRejectedValueOnce(new Error("disk full"));
+    const result = restoreBackupCards({
+      version: 3,
+      cards: [
+        { ...card, imageData: "aW1hZ2U=" },
+        { ...card, id: "two", imageData: "aW1hZ2U=" },
+      ],
+    }).catch((error: Error) => error);
+    await vi.waitFor(() => expect(files.write).toHaveBeenCalledTimes(2));
+    expect(files.remove).not.toHaveBeenCalled();
+    finish();
+    expect(await result).toMatchObject({ message: "disk full" });
+    expect(files.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves card order while limiting concurrent image writes", async () => {
+    let active = 0,
+      peak = 0;
+    files.write.mockImplementation(async (uri: string) => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) =>
+        setTimeout(resolve, uri.includes("image-1.") ? 20 : 5),
+      );
+      active--;
+    });
+    const input = Array.from({ length: 9 }, (_, index) => ({
+      ...card,
+      id: `card-${index}`,
+      imageData: "aW1hZ2U=",
+    }));
+    const restored = await restoreBackupCards({ version: 3, cards: input });
+    expect(restored.cards.map((card) => card.id)).toEqual(
+      input.map((card) => card.id),
+    );
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(4);
+    expect(files.remove).not.toHaveBeenCalled();
+  });
+
   it("rejects path traversal IDs before touching the filesystem", async () => {
     await expect(
       restoreBackupCards({

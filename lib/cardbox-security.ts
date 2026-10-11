@@ -67,6 +67,14 @@ const backupEnvelopeSchema = z.discriminatedUnion("format", [
     payload: payloadSchema,
     mac: z.string().regex(/^[a-f0-9]{64}$/),
   }),
+  z.object({
+    format: z.literal("cardbox-secure-v4"),
+    salt: hex16,
+    iv: hex16,
+    check: z.string().regex(/^[a-f0-9]{64}$/),
+    payload: payloadSchema,
+    mac: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
 ]);
 
 function equalMac(expected: string, actual: string) {
@@ -141,55 +149,113 @@ function wordBytes(value: CryptoJS.lib.WordArray) {
   );
 }
 
-async function deriveBackupKey(password: string, salt: string, length: number) {
+async function deriveBackupKey(
+  password: string,
+  salt: string,
+  length: number,
+  firstBlock = 1,
+) {
   // Keep the original parameters and UTF-8 encoding, while yielding to the UI.
   const bytes = await derivePasswordBytes(
     wordBytes(CryptoJS.enc.Utf8.parse(password)),
     wordBytes(CryptoJS.enc.Hex.parse(salt)),
     ITERATIONS,
     length,
+    firstBlock,
   );
-  return CryptoJS.lib.WordArray.create(bytes);
+  try {
+    return CryptoJS.lib.WordArray.create(bytes);
+  } finally {
+    bytes.fill(0);
+  }
 }
 
-async function backupKeys(password: string, salt: string) {
-  const words = await deriveBackupKey(password, salt, 64);
-  return {
-    encryption: CryptoJS.lib.WordArray.create(words.words.slice(0, 8), 32),
-    authentication: CryptoJS.lib.WordArray.create(words.words.slice(8, 16), 32),
-  };
+async function backupKeysV4(password: string, salt: string) {
+  // One full-strength PBKDF2 block, then domain-separated encryption / MAC subkeys.
+  // v3 also needs only one block per password guess, but derived both blocks for every operation.
+  const master = await deriveBackupKey(password, salt, 32);
+  try {
+    return {
+      encryption: CryptoJS.HmacSHA256("cardbox.backup.encryption.v4", master),
+      authentication: CryptoJS.HmacSHA256(
+        "cardbox.backup.authentication.v4",
+        master,
+      ),
+    };
+  } finally {
+    master.words.fill(0);
+    master.sigBytes = 0;
+  }
 }
 
 export async function encryptBackup(value: string, password: string) {
   if (!password.trim()) throw new Error("请输入备份密码。");
+  const plaintext = CryptoJS.enc.Utf8.parse(value);
+  const ciphertextBytes = (Math.floor(plaintext.sigBytes / 16) + 1) * 16;
+  if (Math.ceil(ciphertextBytes / 3) * 4 + 512 > MAX_BACKUP_BYTES)
+    throw new Error("备份超过 50 MB，请减少卡面图片大小。");
   const salt = (await randomWords(16)).toString();
   const iv = await randomWords(16);
-  const keys = await backupKeys(password, salt);
+  const keys = await backupKeysV4(password, salt);
+  const format = "cardbox-secure-v4" as const;
+  const header = `${format}|${salt}|${iv.toString()}`;
+  // This check still requires all 120,000 rounds; it is not a cheap password hash.
+  const check = CryptoJS.HmacSHA256(
+    `cardbox.backup.password.v4|${header}`,
+    keys.authentication,
+  ).toString();
   const envelope = {
-    format: "cardbox-secure-v3" as const,
+    format,
     salt,
     iv: iv.toString(),
-    payload: CryptoJS.AES.encrypt(value, keys.encryption, { iv }).toString(),
+    check,
+    payload: CryptoJS.AES.encrypt(plaintext, keys.encryption, {
+      iv,
+    }).toString(),
   };
   const mac = CryptoJS.HmacSHA256(
-    `${envelope.format}|${salt}|${envelope.iv}|${envelope.payload}`,
+    `${header}|${check}|${envelope.payload}`,
     keys.authentication,
   ).toString();
   return JSON.stringify({ ...envelope, mac });
 }
 
 export async function decryptBackup(value: string, password: string) {
+  if (!password.trim()) throw new Error("请输入备份密码。");
   if (value.length > MAX_BACKUP_BYTES) throw new Error("备份文件过大。");
   const envelope = backupEnvelopeSchema.parse(JSON.parse(value));
   if (envelope.format === "cardbox-secure-v2") {
     const key = await deriveBackupKey(password, envelope.salt, 32);
-    return decryptCipher(envelope.payload, key, envelope.iv);
+    try {
+      return decryptCipher(envelope.payload, key, envelope.iv);
+    } catch {
+      throw new Error("密码不正确或备份已损坏。");
+    }
   }
-  const keys = await backupKeys(password, envelope.salt);
+  if (envelope.format === "cardbox-secure-v4") {
+    const keys = await backupKeysV4(password, envelope.salt);
+    const header = `${envelope.format}|${envelope.salt}|${envelope.iv}`;
+    const check = CryptoJS.HmacSHA256(
+      `cardbox.backup.password.v4|${header}`,
+      keys.authentication,
+    ).toString();
+    if (!equalMac(check, envelope.check))
+      throw new Error("密码不正确或备份已损坏。");
+    const mac = CryptoJS.HmacSHA256(
+      `${header}|${envelope.check}|${envelope.payload}`,
+      keys.authentication,
+    ).toString();
+    if (!equalMac(mac, envelope.mac))
+      throw new Error("备份完整性校验失败，文件可能已损坏。");
+    return decryptCipher(envelope.payload, keys.encryption, envelope.iv);
+  }
+  // v3 stores the MAC key in PBKDF2 block 2. Authenticate first; derive block 1 only on success.
+  const authentication = await deriveBackupKey(password, envelope.salt, 32, 2);
   const mac = CryptoJS.HmacSHA256(
     `${envelope.format}|${envelope.salt}|${envelope.iv}|${envelope.payload}`,
-    keys.authentication,
+    authentication,
   ).toString();
   if (!equalMac(mac, envelope.mac)) throw new Error("密码不正确或备份已损坏。");
-  return decryptCipher(envelope.payload, keys.encryption, envelope.iv);
+  const encryption = await deriveBackupKey(password, envelope.salt, 32);
+  return decryptCipher(envelope.payload, encryption, envelope.iv);
 }

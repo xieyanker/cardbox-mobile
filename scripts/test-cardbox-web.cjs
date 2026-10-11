@@ -291,7 +291,7 @@ async function add({ name, number, type, image = false }) {
     backupFile = path.resolve(".expo/cardbox-web-backup.cardbox");
     await (await downloaded).saveAs(backupFile);
     const raw = await fs.readFile(backupFile, "utf8");
-    assert.equal(JSON.parse(raw).format, "cardbox-secure-v3");
+    assert.equal(JSON.parse(raw).format, "cardbox-secure-v4");
     assert(!raw.includes("2345678901234567"));
     assert(!raw.includes("CardBox-test-password"));
     await visible("备份已生成");

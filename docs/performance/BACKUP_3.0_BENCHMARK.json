@@ -1,0 +1,123 @@
+{
+  "environment": "Node v24.19.0; desktop JS fallback, not Android measurements",
+  "generatedAt": "2026-10-11T05:04:15.527Z",
+  "baseline": "2.0.0 (7100e97)",
+  "rows": [
+    {
+      "name": "2.0 v3",
+      "plaintextBytes": 1533,
+      "fileBytes": 2246,
+      "export": {
+        "medianMs": 1524,
+        "samplesMs": [
+          1519,
+          1524,
+          1526
+        ]
+      },
+      "import": {
+        "medianMs": 1475,
+        "samplesMs": [
+          1475,
+          1526,
+          1460
+        ]
+      },
+      "wrongPassword": {
+        "medianMs": 1475,
+        "samplesMs": [
+          1497,
+          1475,
+          1429
+        ]
+      }
+    },
+    {
+      "name": "3.0 v4",
+      "plaintextBytes": 1533,
+      "fileBytes": 2321,
+      "export": {
+        "medianMs": 263,
+        "samplesMs": [
+          274,
+          251,
+          263
+        ]
+      },
+      "import": {
+        "medianMs": 252,
+        "samplesMs": [
+          260,
+          238,
+          252
+        ]
+      },
+      "wrongPassword": {
+        "medianMs": 254,
+        "samplesMs": [
+          265,
+          254,
+          253
+        ]
+      }
+    },
+    {
+      "name": "2.0 v3",
+      "plaintextBytes": 875773,
+      "fileBytes": 1167902,
+      "export": {
+        "medianMs": 1633,
+        "samplesMs": [
+          1633,
+          1686,
+          1612
+        ]
+      },
+      "import": {
+        "medianMs": 1603,
+        "samplesMs": [
+          1628,
+          1564,
+          1603
+        ]
+      },
+      "wrongPassword": {
+        "medianMs": 1529,
+        "samplesMs": [
+          1577,
+          1529,
+          1480
+        ]
+      }
+    },
+    {
+      "name": "3.0 v4",
+      "plaintextBytes": 875773,
+      "fileBytes": 1167977,
+      "export": {
+        "medianMs": 377,
+        "samplesMs": [
+          377,
+          382,
+          363
+        ]
+      },
+      "import": {
+        "medianMs": 355,
+        "samplesMs": [
+          355,
+          341,
+          360
+        ]
+      },
+      "wrongPassword": {
+        "medianMs": 252,
+        "samplesMs": [
+          260,
+          251,
+          252
+        ]
+      }
+    }
+  ]
+}
