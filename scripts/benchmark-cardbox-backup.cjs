@@ -59,6 +59,7 @@ async function main() {
     const baselineKdf = compile(tagged("lib/cardbox-pbkdf2.ts"));
     const currentKdf = compile(
       await fs.readFile("lib/cardbox-pbkdf2.ts", "utf8"),
+      { "./cardbox-native-kdf": { getNativePasswordDeriver: () => null } },
     );
     const dependencies = {
       "react-native": { Platform: { OS: "android" } },

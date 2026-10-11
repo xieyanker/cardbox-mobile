@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-10-11T06:26:03.078Z",
+  "device": "23113RKC6C - 16 - API 36",
+  "environment": "Android Expo Go / Hermes + local system WebView WebCrypto; synthetic crypto only; excludes file I/O and system authentication",
+  "running": false,
+  "hermes": true,
+  "iterations": 120000,
+  "rows": [
+    {
+      "name": "native PBKDF2 120000 / 32 bytes",
+      "milliseconds": 44
+    },
+    {
+      "name": "10 cards / 0 image bytes each / 1543 plaintext bytes export",
+      "milliseconds": 35
+    },
+    {
+      "name": "10 cards / 0 image bytes each / 1543 plaintext bytes import",
+      "milliseconds": 30
+    },
+    {
+      "name": "10 cards / 0 image bytes each / 1543 plaintext bytes wrong password",
+      "milliseconds": 31
+    },
+    {
+      "name": "10 cards / 65536 image bytes each / 875783 plaintext bytes export",
+      "milliseconds": 2650
+    },
+    {
+      "name": "10 cards / 65536 image bytes each / 875783 plaintext bytes import",
+      "milliseconds": 2786
+    },
+    {
+      "name": "10 cards / 65536 image bytes each / 875783 plaintext bytes wrong password",
+      "milliseconds": 47
+    },
+    {
+      "name": "3.0.0 Hermes JS PBKDF2 120000 / 32 bytes",
+      "milliseconds": 29942
+    }
+  ],
+  "progress": "complete"
+}

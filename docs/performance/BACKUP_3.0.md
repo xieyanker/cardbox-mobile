@@ -1,11 +1,26 @@
 # CardBox 3.0 备份性能与兼容性
 
-2026-10-11 完成代码优化。用户报告 Android 小文件导入 / 导出仍耗时数分钟；本轮定位到密码派生热路径中的大量对象分配和重复派生。当前没有在线 Android 真机，不能将桌面结果视为手机实测，也不能据此确认设备上所有耗时来源。
+2026-10-11：3.0.0 桌面优化后，用户真机反馈导入 / 导出 / 错误密码仍至少一分钟。后续已连接 Android 16 手机，测得 3.0.0 的 Hermes JS 单块密码派生耗时 29.942 秒；旧 v3 正确密码还需要两个块。3.0.1 改用离线系统 WebView 的本机 WebCrypto，单块同参数耗时 44 毫秒。这确认了 Hermes 密码派生是主要瓶颈之一；系统文件提供器耗时仍需用户实际操作验收。
+
+## 3.0.1 真机测量
+
+设备 `23113RKC6C` / Android 16 / API 36 / Expo Go，使用真实 Hermes 及系统 WebView；密码和卡片全部为脚本生成的虚构数据，未读取或替换用户卡包。单次记录：
+
+| 合成输入 | 导出加密 | 导入解密 | 错误密码检查 |
+| --- | --- | --- | --- |
+| 10 张卡，无图片，明文 1,543 字节 | 35 ms | 30 ms | 31 ms |
+| 10 张卡，每张 64 KiB 合成图片内容，明文 875,783 字节 | 2,650 ms | 2,786 ms | 47 ms |
+
+完整 120,000 轮 PBKDF2-SHA256：3.0.0 Hermes JS 单块 29,942 ms；新本机路径 44 ms。两条路径均与独立 Node.js PBKDF2 向量逐字节一致。上述图片内容仅用于加解密负载，不是相册图片；**不包含系统身份验证、图片文件读写、目录选择和文件提供器写入**，不能当作整个导出操作的端到端耗时。
+
+原始记录见 [Android JSON](BACKUP_3.0.1_ANDROID.json)。测试手机保持 CardBox 前台、Metro 服务运行后执行 `pnpm benchmark:android`，结果保存到 `.expo/cardbox-android-backup-benchmark.json`；脚本只运行虚构加解密数据，不访问用户卡片仓库或备份文件。
+
+本机加速组件通过 [Expo SDK 54 的 WebView](https://docs.expo.dev/versions/v54.0.0/sdk/webview/) 在 Expo Go 中运行。它只加载代码内置 HTML，HTTPS base URL 提供安全上下文而不请求网页；CSP 禁止网络，原生层阻止外部导航、文件访问和打开新窗口，关闭缓存、DOM 存储及 WebView 调试。仅密码字节、盐和派生参数通过本机消息桥，结果和输入副本及时清零，不传卡片或图片，不把密码写入日志或存储。服务错误、关闭或超时明确失败，不悄悄退回手机上数十秒的路径；Web 页面仍可使用自身 WebCrypto / JS 回退。
 
 ## 改动
 
 - PBKDF2 复用 HMAC 工作状态和固定摘要缓冲区，避免每轮创建新对象；约每 12 ms 让出界面线程。保留 SHA-256、随机 16 字节盐及 **120,000 轮**。
-- 环境支持时使用 WebCrypto 原生 PBKDF2；Expo Go / Hermes 使用相同结果的纯 JavaScript 路径，不需要增加原生依赖。
+- 3.0.0：环境支持时使用 WebCrypto，否则 Expo Go / Hermes 使用纯 JavaScript 路径。3.0.1：移动端优先通过离线系统 WebView 运行本机 WebCrypto，维持同样的派生参数；JavaScript 代码保留作 Web 回退和对照。
 - 新导出格式为 `cardbox-secure-v4`：派生 32 字节主密钥，再用不同用途标签的 HMAC-SHA256 分离加密和认证子密钥。避免旧 v3 为正常操作计算两个 PBKDF2 块。AES-256-CBC 与完整性认证保留。
 - v4 的密码检查认证短文件头，仍需完成全部 120,000 轮；错误密码在扫描密文的 MAC、AES 解密与图片恢复前退出，没有引入低成本密码校验值。文件头、检查值与密文都由完整性 MAC 绑定。
 - 旧 v3 先直接派生第二块认证密钥，认证通过后才派生第一块加密密钥；错误密码在 JavaScript 路径上只需一块。v2 继续兼容读取。
@@ -16,7 +31,7 @@
 
 PBKDF2 块计算依据 [RFC 8018](https://www.rfc-editor.org/rfc/rfc8018)，缓冲区复用参考安装版本 [noble-hashes 1.8.0 的实现](https://github.com/paulmillr/noble-hashes/blob/1.8.0/src/pbkdf2.ts)，原生路径使用 [WebCrypto PBKDF2](https://www.w3.org/TR/webcrypto/#pbkdf2)。独立 Node.js PBKDF2 / AES / HMAC 结果验证新旧格式。
 
-## 对照测量
+## 3.0.0 桌面对照测量（历史记录）
 
 运行 `pnpm benchmark:backup`，读取 Git 标签 `2.0.0` 的原实现与当前实现。在 Node v24.19.0 桌面环境中关闭 WebCrypto，测量 Hermes 可用的同一纯 JavaScript 路径；每项运行三次取中位数。这里只包含加解密、校验和序列化，不包含系统目录选择、原生图片文件 I/O 或写入提供器的时间。
 

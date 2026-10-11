@@ -1,5 +1,6 @@
 import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha256";
+import { getNativePasswordDeriver } from "./cardbox-native-kdf";
 
 function validateParameters(
   iterations: number,
@@ -27,6 +28,8 @@ export async function derivePasswordBytes(
   firstBlock = 1,
 ) {
   validateParameters(iterations, length, firstBlock);
+  const native = getNativePasswordDeriver();
+  if (native) return native(password, salt, iterations, length, firstBlock);
   const subtle = globalThis.crypto?.subtle;
   if (subtle) {
     const passwordCopy = new Uint8Array(password);
