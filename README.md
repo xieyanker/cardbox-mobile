@@ -1,6 +1,6 @@
 # CardBox
 
-CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前代码版本为 `3.0.0`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
+CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目标是提供简单、安全、纯本地的卡包体验。当前代码版本为 `3.0.1`，Android 包名为 `com.app.cardboxmobile`。作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。
 
 ## 项目文档
 
@@ -16,7 +16,7 @@ CardBox 是使用 Expo / React Native 开发的本地银行卡管理应用，目
 
 3.0.0 重新设计包含 CardBox 字样的应用图标，将首页添加入口移到右上角菜单第一项，简化备份管理菜单。首页增加堆叠、聚焦与钱包浏览，保留经典左右滑动及平铺浏览，并记住模式选择。备份优化复用密码派生状态、提前验证密码，并限制图片 I/O 并发；新 v4 备份保留 120,000 轮派生，可读取旧 v2 / v3。桌面 JS 对照加解密约快 4–6 倍，数据与边界见[性能记录](docs/performance/BACKUP_3.0.md)。
 
-3.0.0 已通过类型检查、54 条业务测试、21 项 Web 操作回归、三模式浏览检查、Android 开发包及 Hermes 字节码生成；ESLint 无错误（7 条已有模板警告）。Android 真机动画、备份耗时与 APK 图标验收待完成，目前没有生成 3.0 APK。
+3.0.1 将默认浏览模式顺序改为经典、钱包、堆叠、聚焦，增加“显示模式设置”以调整并保存排列；移动端密码派生使用离线系统 WebCrypto。Android 16 真机测得单块派生从约 30 秒降至 44 毫秒，约 0.88 MB 合成内容的加密 / 解密约 2.7 秒，错误密码检查 47 毫秒；不含原生文件 I/O 和系统验证。已通过类型检查、71 条业务测试、21 项 Web 回归及浏览模式操作检查；实际用户备份流程、动画体验和 APK 图标继续按[验收说明](docs/TESTING.md)复测，目前未生成新 APK。
 
 首轮开发已修复存储初始化、串行写入、设备密钥初始化、身份验证入口、图片持久保存和排序问题，并对照原型调整主界面。2.0.0 已通过类型检查、45 条业务测试、21 项 Web 操作回归检查和 Android 开发代码打包；2026-10-11 用户确认全部验收完成，接受本版本作为当前开发基线。
 

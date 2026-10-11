@@ -6,31 +6,55 @@ const { pbkdf2Sync } = require("node:crypto");
 
 async function main() {
   const port = process.env.CARDBOX_METRO_PORT || "8081";
-  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  const target = targets.filter(t => t.appId === "host.exp.exponent").at(-1);
-  if (!target) throw Error("Open CardBox in the connected phone's Expo Go first.");
+  const targets = await (
+    await fetch(`http://127.0.0.1:${port}/json/list`)
+  ).json();
+  const target = targets.filter((t) => t.appId === "host.exp.exponent").at(-1);
+  if (!target)
+    throw Error("Open CardBox in the connected phone's Expo Go first.");
   const socket = new WebSocket(target.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+  await new Promise((resolve, reject) => {
+    socket.onopen = resolve;
+    socket.onerror = reject;
+  });
   let sequence = 0;
   const pending = new Map();
-  socket.onmessage = ({data}) => {
+  socket.onmessage = ({ data }) => {
     const response = JSON.parse(data);
     if (response.id) pending.get(response.id)?.(response);
   };
-  const call = (method, params) => new Promise((resolve, reject) => {
-    const id = ++sequence;
-    const timer = setTimeout(() => { pending.delete(id); reject(Error("Inspector timed out")); }, 30000);
-    pending.set(id, response => { clearTimeout(timer); pending.delete(id); resolve(response); });
-    socket.send(JSON.stringify({id, method, params}));
-  });
-  const evaluate = async expression => {
-    const response = await call("Runtime.evaluate", {expression,returnByValue:true});
-    if (response.error || response.result?.exceptionDetails) throw Error(JSON.stringify(response));
+  const call = (method, params) =>
+    new Promise((resolve, reject) => {
+      const id = ++sequence;
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(Error("Inspector timed out"));
+      }, 30000);
+      pending.set(id, (response) => {
+        clearTimeout(timer);
+        pending.delete(id);
+        resolve(response);
+      });
+      socket.send(JSON.stringify({ id, method, params }));
+    });
+  const evaluate = async (expression) => {
+    const response = await call("Runtime.evaluate", {
+      expression,
+      returnByValue: true,
+    });
+    if (response.error || response.result?.exceptionDetails)
+      throw Error(JSON.stringify(response));
     return response.result.result.value;
   };
   try {
     await call("Runtime.enable", {});
-    const expected = pbkdf2Sync("test", new Uint8Array(16).fill(7), 120000, 32, "sha256").toString("hex");
+    const expected = pbkdf2Sync(
+      "test",
+      new Uint8Array(16).fill(7),
+      120000,
+      32,
+      "sha256",
+    ).toString("hex");
     // Avoid async-function syntax: Hermes eval accepts callbacks; Metro normally transpiles async.
     const start = `(function() {
       if (globalThis.__cardboxSyntheticBench && globalThis.__cardboxSyntheticBench.running) throw Error('Another synthetic benchmark is running');
@@ -71,23 +95,45 @@ async function main() {
     const deadline = Date.now() + 180000;
     let lastProgress;
     while (Date.now() < deadline) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const report = JSON.parse(await evaluate("JSON.stringify(globalThis.__cardboxSyntheticBench)"));
-      if (report.progress !== lastProgress) {console.log(report.progress); lastProgress=report.progress;}
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const report = JSON.parse(
+        await evaluate("JSON.stringify(globalThis.__cardboxSyntheticBench)"),
+      );
+      if (report.progress !== lastProgress) {
+        console.log(report.progress);
+        lastProgress = report.progress;
+      }
       if (!report.running) {
         assert(!report.error, report.error);
         assert.equal(report.hermes, true);
         assert.equal(report.rows.length, 8);
-        const record = {generatedAt:new Date().toISOString(),device:target.deviceName,
-          environment:"Android Expo Go / Hermes + local system WebView WebCrypto; synthetic crypto only; excludes file I/O and system authentication",...report};
-        await fs.mkdir(".expo",{recursive:true});
-        await fs.writeFile(".expo/cardbox-android-backup-benchmark.json",JSON.stringify(record,null,2)+"\n");
-        console.log(JSON.stringify(record,null,2));
-        await evaluate("delete globalThis.__cardboxSyntheticBench; 'synthetic state cleared'");
+        const record = {
+          generatedAt: new Date().toISOString(),
+          device: target.deviceName,
+          environment:
+            "Android Expo Go / Hermes + local system WebView WebCrypto; synthetic crypto only; excludes file I/O and system authentication",
+          ...report,
+        };
+        await fs.mkdir(".expo", { recursive: true });
+        await fs.writeFile(
+          ".expo/cardbox-android-backup-benchmark.json",
+          JSON.stringify(record, null, 2) + "\n",
+        );
+        console.log(JSON.stringify(record, null, 2));
+        await evaluate(
+          "delete globalThis.__cardboxSyntheticBench; 'synthetic state cleared'",
+        );
         return;
       }
     }
-    throw Error("Benchmark did not finish; keep the phone unlocked with CardBox foreground.");
-  } finally {socket.close();}
+    throw Error(
+      "Benchmark did not finish; keep the phone unlocked with CardBox foreground.",
+    );
+  } finally {
+    socket.close();
+  }
 }
-main().catch(error=>{console.error(error);process.exitCode=1;});
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
