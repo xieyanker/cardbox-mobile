@@ -1,5 +1,7 @@
 # Android 验收步骤
 
+自己连接手机调试，直接看[单窗口 USB 启动流程](#usb-调试一个窗口即可)。下方历史验收记录无需在每次调试前执行。
+
 更新日期：2026-10-12。CardBox 2.0.0 已由用户通过 USB / Expo Go 在 Android 手机上完成全部功能验收，并确认当前版本可以提交、推送。3.0.2 已通过 EAS 云构建，Android APK 已发布到 [GitHub Releases](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2)；完整 APK 真机验收反馈仍待记录。
 
 当前代码版本：`4.0.0`（Android 构建编号 8），正在开发；作者：xieyanker；[GitHub 项目](https://github.com/xieyanker/cardbox-mobile)。4.0.0 新增到期时间掩码输入，完整验收清单见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。每次开始新版本即更新代码及文档版本号，用户亲自验收并授权后才创建 tag。
@@ -40,28 +42,26 @@
 
 ## 连接手机
 
-### 局域网连接
+### USB 调试：一个窗口即可
 
-1. Android 手机安装 [SDK 54 对应的 Expo Go](https://expo.dev/go?sdkVersion=54&platform=android&device=true)。它是调试客户端，不是 CardBox 的最终 APK。
-2. 手机和电脑连接同一局域网。电脑有多张网卡时，使用手机所在网络对应的 IPv4 地址。
-3. 在项目根目录运行 `pnpm dev:mobile`，保持终端运行。
-4. 在 Expo Go 扫描终端中的二维码，或手动输入 `exp://电脑IPv4地址:8081`。启动后代码修改可通过 Fast Refresh 更新，无需重复编译 APK。
-5. 如果连接失败，先用手机浏览器访问 `http://电脑IPv4地址:8081/status`，正常应显示 `packager-status:running`。检查网络隔离、VPN 路由与防火墙，不要直接转向云构建。
+手机已安装 [SDK 54 对应的 Expo Go](https://expo.dev/go?sdkVersion=54&platform=android&device=true)，用数据线连接电脑，开启 USB 调试并允许这台电脑调试。如果之前的调试服务还在运行，先按 `Ctrl+C` 停止。
 
-### USB 连接（当前已验证）
-
-适用于局域网连接失败或希望使用数据线调试的情况，不需要编译 CardBox APK，也不消耗 EAS 云构建次数。
-
-1. 手机安装上述 SDK 54 对应的 Expo Go，通过支持数据传输的 USB 线连接电脑。
-2. 在手机开发者选项中启用 USB 调试，并确认允许这台电脑调试。
-3. 电脑准备 [Google 官方 Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)，其中包含 `adb`。本次仅将工具解压到项目中被 Git 忽略的 `.expo/android-tools/platform-tools/`，没有安装 Android Studio；重新克隆项目时需另行准备工具。
-4. 如已有局域网模式的 Metro 服务，先在它的终端按 `Ctrl+C` 停止，再从项目根目录启动本机模式并保持终端运行：
+只打开一个 PowerShell 窗口，复制执行：
 
 ```powershell
-pnpm exec expo start --go --localhost --port 8081
+cd F:\trae\cardbox-mobile
+$env:PATH = "$PWD\.expo\android-tools\platform-tools;$env:PATH"
+node node_modules/expo/bin/cli start --go --localhost --android --port 8081 --max-workers 2
 ```
 
-5. 在另一个 PowerShell 终端进入项目根目录，查看手机序列号：
+Expo 会自动建立 USB 端口转发并打开手机上的 Expo Go。**不需要第二个窗口，也不用手动执行连接命令。** 保持数据线连接和这个窗口运行；代码修改通常会自动刷新，结束时按 `Ctrl+C`。多个设备或模拟器同时在线时，按终端提示选择目标手机。
+
+这台电脑的 ADB 已放在 `.expo/android-tools/platform-tools/`，上面的 PATH 设置只对当前窗口生效。此目录被 Git 忽略；换电脑或重新克隆项目时，需要另行准备 [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)。此流程不编译 APK，不消耗 EAS 构建额度。
+
+<details>
+<summary>连接失败时再看：USB 故障排查与手动连接</summary>
+
+先按 `Ctrl+C` 停止服务，在同一窗口检查设备：
 
 ```powershell
 $taskAdb = '.\.expo\android-tools\platform-tools\adb.exe'
@@ -70,9 +70,11 @@ $taskAdb = '.\.expo\android-tools\platform-tools\adb.exe'
 
 手机状态必须为 `device`。如果显示 `unauthorized`，解锁手机并确认 USB 调试授权；如果没有设备，检查数据线、USB 接口和设备驱动。已将 Platform Tools 加入 PATH 时，也可直接使用 `adb`。
 
-6. 将下面的序列号替换为上一步显示的实体手机序列号，再建立端口转发并打开项目：
+设备正常后先重新执行上面的单窗口启动命令。如果自动打开仍失败，保留服务窗口，在另一个 PowerShell 窗口进入项目目录，执行以下备用步骤；将序列号替换为检查结果中的目标手机序列号：
 
 ```powershell
+cd F:\trae\cardbox-mobile
+$taskAdb = '.\.expo\android-tools\platform-tools\adb.exe'
 $taskDeviceSerial = '替换为手机序列号'
 & $taskAdb -s $taskDeviceSerial reverse tcp:8081 tcp:8081
 & $taskAdb -s $taskDeviceSerial reverse --list
@@ -81,9 +83,20 @@ $taskDeviceSerial = '替换为手机序列号'
 
 端口转发使手机的 `127.0.0.1:8081` 访问电脑上的 Metro 服务。此时使用本机地址打开项目，不再扫描局域网模式的旧二维码。有多个设备或模拟器时保留 `-s` 参数，以免操作其他设备。
 
-保持 USB 连接和 Metro 服务运行，普通 TypeScript / JavaScript 修改可通过 Fast Refresh 更新。拔线、重启手机或重启 ADB 后，重新检查设备授权并执行第 6 步。测试结束后可停止 Metro；如需主动清除转发，执行 `& $taskAdb -s $taskDeviceSerial reverse --remove tcp:8081`。
+如需主动清除转发，执行 `& $taskAdb -s $taskDeviceSerial reverse --remove tcp:8081`。
 
-2026-10-11 连接记录：Android 16、Expo Go 54.0.8；ADB 授权与端口转发成功，手机请求并运行 Android 开发代码包，用户确认已进入 CardBox 首页。局域网连接失败的具体原因尚未确认。首次验证取消、后台锁定、相册、备份等功能仍按下表验收。
+</details>
+
+<details>
+<summary>可选：不用数据线，改用局域网连接</summary>
+
+手机和电脑连接同一局域网，在项目根目录运行 `pnpm dev:mobile`，保持终端运行，在 Expo Go 扫描终端中的二维码。也可手动输入 `exp://电脑IPv4地址:8081`。电脑有多张网卡时，使用手机所在网络对应的 IPv4 地址。
+
+如果连接失败，用手机浏览器访问 `http://电脑IPv4地址:8081/status`，正常应显示 `packager-status:running`；检查网络隔离、VPN 路由与防火墙。
+
+</details>
+
+2026-10-11 连接记录：Android 16、Expo Go 54.0.8；手动 ADB 授权与端口转发成功，手机请求并运行 Android 开发代码包，用户确认已进入 CardBox 首页。2026-10-12 将默认说明简化为 Expo 自动连接；命令参数与自动端口转发路径已核对本项目 CLI 源码，尚未新增这条简化命令的真机执行记录。局域网连接失败的具体原因尚未确认。
 
 Expo Go 数据属于该调试客户端。正式 CardBox APK 的应用目录和设备密钥不同，迁移时使用加密 `.cardbox` 备份。
 

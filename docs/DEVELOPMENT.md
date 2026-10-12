@@ -83,11 +83,19 @@ Web 只适合布局和普通交互检查。Web 不执行原生身份验证或后
 
 ### 手机预览
 
+这台电脑优先使用 USB：手机安装 SDK 54 Expo Go，开启 USB 调试，连接数据线并允许电脑调试。只打开一个 PowerShell 窗口，执行：
+
 ```powershell
-pnpm dev:mobile
+cd F:\trae\cardbox-mobile
+$env:PATH = "$PWD\.expo\android-tools\platform-tools;$env:PATH"
+node node_modules/expo/bin/cli start --go --localhost --android --port 8081 --max-workers 2
 ```
 
-手机与电脑需要能互相访问开发服务。Android 从 [SDK 54 Expo Go 下载页](https://expo.dev/go?sdkVersion=54&platform=android&device=true)安装匹配客户端；不要默认当前商店最新版兼容旧 SDK。开发服务与 APK 编译是不同步骤，Expo Go 与 Fast Refresh 调试不消耗 EAS 云构建额度。
+Expo 自动建立 USB 端口转发并打开手机上的 Expo Go，不需要第二个窗口。保持此窗口运行，结束时按 `Ctrl+C`；已有服务时先停止再启动。当前电脑已有上述 ADB 目录，换电脑需准备 Platform Tools。详细说明及折叠的故障排查见[连接手机](TESTING.md#连接手机)。
+
+需要无线连接时，手机与电脑连接同一局域网，运行 `pnpm dev:mobile`，用 Expo Go 扫描二维码即可。
+
+Android 从 [SDK 54 Expo Go 下载页](https://expo.dev/go?sdkVersion=54&platform=android&device=true)安装匹配客户端；不要默认当前商店最新版兼容旧 SDK。开发服务与 APK 编译是不同步骤，Expo Go 与 Fast Refresh 调试不消耗 EAS 云构建额度。
 
 当前约定先在 Android Expo Go 调试，普通界面和 JavaScript 逻辑变更无需重复编译。遇到 Expo Go 不支持的原生功能时，再考虑 development build。当前没有添加 `expo-dev-client` 或 development profile；iOS Face ID 无法在 Expo Go 中完成验证。任何 EAS 云构建都需用户明确确认。
 
