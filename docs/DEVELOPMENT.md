@@ -120,6 +120,10 @@ node node_modules/eslint/bin/eslint.js .
 node node_modules/vitest/vitest.mjs run
 ```
 
+## 更新文档演示图
+
+先启动本地 Web 服务（默认采集地址 `http://localhost:8084/`），运行 `pnpm docs:images`，也可直接执行 `node scripts/capture-cardbox-docs.cjs`。其他端口通过 `CARDBOX_TEST_URL` 指定。脚本只使用隔离浏览器中的虚构卡片，重新采集 `docs/images/` 中约定的演示 PNG，输出 `demo-manifest.json`；不访问手机或现有浏览器卡包。用户真机照片与原始设计图按 SHA-256 校验保护，历史设计截图保留。
+
 ## Android 构建方式
 
 ### 云端构建：不要求电脑先安装 Android Studio

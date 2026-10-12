@@ -1,0 +1,42 @@
+{
+  "version": "4.0.0",
+  "sourceCommit": "6b52ef516939ba235691f3b3f9303fabff4a7e9b",
+  "capturedAt": "2026-10-12T06:49:19.716Z",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "deviceScaleFactor": 2,
+  "platform": "Web mobile viewport",
+  "fixture": "Isolated browser context; synthetic cards created using the app form",
+  "images": [
+    "home-classic.png",
+    "home-wallet.png",
+    "home-stack.png",
+    "home-focus.png",
+    "menu.png",
+    "backup-menu.png",
+    "about.png",
+    "browse-settings.png",
+    "lock-settings.png",
+    "all-cards.png",
+    "all-cards-search.png",
+    "card-details.png",
+    "card-sort.png",
+    "card-sort-drag.png",
+    "card-editor.png",
+    "expiry-input.png",
+    "image-editor.png",
+    "unsaved-editor.png",
+    "storage-management.png",
+    "backup-export.png",
+    "backup-import.png",
+    "backup-preview.png",
+    "home-dark.png"
+  ],
+  "errors": [],
+  "protectedFiles": {
+    "docs/images/android-wallet-real.jpg": "e2033c95a737364a506c2d89776ced4e8da0b9b5d399e1887a8cf8f714474636",
+    "docs/design/images/CardBox设计原型.png": "1e9dade99859808fc316f0a4a9b0fec69d5a952f01f1ca74d45446cc55b1059f"
+  }
+}

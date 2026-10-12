@@ -32,7 +32,7 @@
 
 钱包、堆叠和聚焦支持上下滑动、点击卡片查看详情；经典保留左右滑动和直接查看详情。应用会记住上次选择的模式与模式排列顺序。
 
-上述四种浏览模式及下方页面示例采集自 **已发布的 3.0.2 界面的 Web 移动视口预览**，使用虚构卡片，卡号与 CVV 保持隐藏；README 开头为用户提供的 Android 真机使用截图。示例保留采集时的版本信息，4.0.0 的到期时间掩码以当前代码为准。Android 的系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
+上述四种浏览模式及下方页面示例于 **2026-10-12 从 4.0.0 开发版的 Web 移动视口采集**，使用独立浏览器中的虚构卡片。浏览和详情页的卡号、CVV 保持隐藏，编辑页中的号码也仅为演示数据；README 开头由用户提供的 Android 真机照片保持原样。Web 演示图不代表 Android 真机验收，系统验证、文件选择器和状态栏以安装后的应用为准。点击图片可查看大图。
 
 ## 可以做什么
 
@@ -54,7 +54,7 @@
   <tr>
     <td><img src="docs/images/all-cards.png" width="250" alt="全部卡片双列浏览页面" /></td>
     <td><img src="docs/images/card-editor.png" width="250" alt="添加卡片页面：卡面预览、类型和资料填写" /></td>
-    <td><img src="docs/images/card-details.png" width="250" alt="卡片详情页面：隐藏卡号和 CVV，提供修改与删除" /></td>
+    <td><img src="docs/images/card-details.png" width="250" alt="4.0 卡片详情：常用卡、到期状态、验证后复制及隐藏卡号和 CVV" /></td>
   </tr>
   <tr><th>四字菜单</th><th>浏览模式排序</th><th>加密备份</th></tr>
   <tr>
@@ -66,7 +66,13 @@
   <tr>
     <td><img src="docs/images/lock-settings.png" width="250" alt="自动锁定设置：立即、1 分钟、5 分钟、不自动锁定" /></td>
     <td><img src="docs/images/home-dark.png" width="250" alt="系统深色主题下的钱包浏览模式" /></td>
-    <td><img src="docs/images/about.png" width="250" alt="关于应用：CardBox 新图标、3.0.2 版本、作者与 GitHub 入口" /></td>
+    <td><img src="docs/images/about.png" width="250" alt="关于应用：CardBox 图标、4.0.0 版本、作者与 GitHub 入口" /></td>
+  </tr>
+  <tr><th>到期时间掩码</th><th>卡面裁剪与遮挡</th><th>跨屏拖动排序</th></tr>
+  <tr>
+    <td><img src="docs/images/expiry-input.png" width="250" alt="4.0 单个到期时间输入框显示固定斜杠和下划线掩码" /></td>
+    <td><img src="docs/images/image-editor.png" width="250" alt="4.0 卡面编辑：缩放、旋转与像素遮挡条" /></td>
+    <td><img src="docs/images/card-sort-drag.png" width="250" alt="4.0 拖动排序：浮动卡片、目标位置与边缘滚动说明" /></td>
   </tr>
 </table>
 
@@ -84,7 +90,7 @@ APK 可以独立运行。Expo Go 中的卡包与独立安装的 CardBox 分开�
 
 卡片字段在本机加密保存，移动端设备密钥保存在系统安全存储中。自定义卡面图片保存在应用私有目录；导出的备份会把卡片字段和图片一起加密。卡号隐藏控制应用绘制的文字，卡面照片中的号码需要自行遮挡。
 
-当前版本导出 v4 格式 `.cardbox`，兼容导入旧 v2 / v3 备份；2.0.0 无法导入新 v4 备份。导入会替换当前卡包，请在确认前备份现有卡片，并保管好备份文件与密码。
+当前版本导出 v4 格式 `.cardbox`，兼容导入旧 v2 / v3 备份；2.0.0 无法导入新 v4 备份。4.0 导入可选择替换或合并，并保留导入前的本机加密恢复点；请保管好独立备份文件与密码。
 
 3.0.1 的备份提速已得到用户 Android 真机复测确认。具体测量条件、结果和文件 I/O 边界见 [备份性能记录](docs/performance/BACKUP_3.0.md)。
 

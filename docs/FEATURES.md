@@ -6,11 +6,11 @@
 
 CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可以管理借记卡、信用卡和虚拟卡，选择不同的浏览方式，并通过密码备份迁移或恢复卡包。
 
-本文截图保留已发布的 3.0.2 界面的 Web 移动视口预览，视口为 390 × 844，使用独立浏览器上下文中的虚构卡片。4.0.0 到期时间掩码与关于页版本以当前代码为准。截图中的卡号与 CVV 未展开；没有读取用户真实卡包。系统验证和文件选择器需要在 Android 应用中操作。
+本文演示图于 2026-10-12 从 4.0.0 开发版采集，Web 视口为 390 × 844，使用独立浏览器上下文中的八张虚构卡片，图片以 2 倍像素密度输出。浏览和详情中的卡号、CVV 未展开；编辑图中的号码也是虚构数据。没有读取用户真实卡包。README 开头的用户真机照片与原始设计图保持原样；系统验证、文件选择器和原生屏幕保护仍需在 Android 应用中验收。
 
 ## 图标与应用信息
 
-<p><img src="../assets/images/icon.png" width="160" alt="CardBox 图标：深蓝色与青绿色卡包，带 CardBox 字样" /> <img src="images/about.png" width="230" alt="关于应用页面，显示新版图标与版本 3.0.2" /></p>
+<p><img src="../assets/images/icon.png" width="160" alt="CardBox 图标：深蓝色与青绿色卡包，带 CardBox 字样" /> <img src="images/about.png" width="230" alt="关于应用页面，显示 CardBox 图标与版本 4.0.0" /></p>
 
 图标以卡包和叠放卡片为主体，包含 **CardBox** 字样。独立 APK 使用此图标；“关于应用”显示同一图标、版本、作者和 GitHub 项目入口。Android 自适应图标、单色主题图标和启动画面已配置，素材与设计说明见 [图标设计](design/ICON.md)。
 
@@ -51,7 +51,16 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
   <tr><th>添加卡片</th><th>查看资料</th></tr>
   <tr>
     <td><img src="images/card-editor.png" width="280" alt="添加卡片表单与卡面预览" /></td>
-    <td><img src="images/card-details.png" width="280" alt="卡片资料、显示按钮、修改和删除入口" /></td>
+    <td><img src="images/card-details.png" width="280" alt="4.0 详情：常用、到期状态、验证后复制、修改和删除" /></td>
+  </tr>
+</table>
+
+<table>
+  <tr><th>到期时间掩码</th><th>卡面编辑与遮挡</th><th>未保存确认</th></tr>
+  <tr>
+    <td><img src="images/expiry-input.png" width="250" alt="空到期时间以单个 __/__ 掩码输入框展示" /></td>
+    <td><img src="images/image-editor.png" width="250" alt="裁剪预览、缩放旋转和可移动遮挡条" /></td>
+    <td><img src="images/unsaved-editor.png" width="250" alt="离开编辑页前选择保存修改、放弃修改或继续编辑" /></td>
   </tr>
 </table>
 
@@ -67,7 +76,12 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
   <tr><th>全部卡片</th><th>卡片排序</th></tr>
   <tr>
     <td><img src="images/all-cards.png" width="280" alt="双列卡片网格与添加入口" /></td>
-    <td><img src="images/card-sort.png" width="280" alt="卡片排序列表与上下移动按钮" /></td>
+    <td><img src="images/card-sort.png" width="280" alt="排序列表、把手、上下箭头和边缘自动滚动说明" /></td>
+  </tr>
+  <tr><th>名称搜索</th><th>拖动预览</th></tr>
+  <tr>
+    <td><img src="images/all-cards-search.png" width="280" alt="搜索旅行卡片并显示常用标记与到期提示" /></td>
+    <td><img src="images/card-sort-drag.png" width="280" alt="正在拖动的卡片与目标位置指示线" /></td>
   </tr>
 </table>
 
@@ -89,10 +103,14 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
 <table>
   <tr><th>首页菜单</th><th>备份二级菜单</th></tr>
   <tr>
-    <td><img src="images/menu.png" width="280" alt="六个四字一级菜单条目" /></td>
+    <td><img src="images/menu.png" width="280" alt="4.0 八个四字一级菜单条目，包括立即锁定与存储管理" /></td>
     <td><img src="images/backup-menu.png" width="280" alt="导出备份、导入备份及返回一级菜单入口" /></td>
   </tr>
 </table>
+
+存储管理可查看卡面占用并清理无引用图片；下图是 Web 演示，原生目录占用以手机结果为准。
+
+<img src="images/storage-management.png" width="280" alt="存储管理的占用统计与安全清理入口" />
 
 ## 密码加密备份
 
@@ -105,14 +123,15 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
 进入 **备份管理 → 导入备份**，选择文件、输入原密码（兼容旧短密码）。检查通过后预览数量和名称，再确认替换或合并；合并保留现有卡片并跳过重复卡号。操作前保存本机加密恢复点，保存失败就中止；可以使用“恢复上次导入前卡包”恢复最近一次快照。恢复点保留其图片，取消确认会保留现有卡包。
 
 <table>
-  <tr><th>导出备份</th><th>导入备份</th></tr>
+  <tr><th>导出备份</th><th>合并导入</th><th>导入前预览</th></tr>
   <tr>
-    <td><img src="images/backup-export.png" width="280" alt="备份密码输入与导出页面" /></td>
-    <td><img src="images/backup-import.png" width="280" alt="备份文件选择、密码输入与开始导入页面" /></td>
+    <td><img src="images/backup-export.png" width="250" alt="成功备份记录、变更统计、图片选项与密码确认" /></td>
+    <td><img src="images/backup-import.png" width="250" alt="备份文件、替换或合并选项及恢复点入口" /></td>
+    <td><img src="images/backup-preview.png" width="250" alt="解密后确认卡片和图片数量、名称及重复跳过摘要" /></td>
   </tr>
 </table>
 
-4.0 导出按钮统一为“生成加密备份”，Android 随后选择保存文件夹；下方旧截图保留 3.0.2 采集时的样式。实际文件读写时间也受到系统文件提供器影响。备份提速的历史测量细节见 [性能记录](performance/BACKUP_3.0.md)。
+4.0 导出按钮统一为“生成加密备份”，Android 随后选择保存文件夹；上述截图展示当前 4.0 页面。实际文件读写时间也受到系统文件提供器影响。备份提速的历史测量细节见 [性能记录](performance/BACKUP_3.0.md)。
 
 当前导出格式为 v4，支持读取旧 v2 / v3 备份；旧 2.0.0 无法导入新 v4 文件。从 Expo Go 迁移到独立 APK 时，先导出、再在新应用中导入，两者的本地卡包分别保存。
 
@@ -124,7 +143,7 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
 
 应用切到后台后遮挡内容，返回时按设置决定是否重新验证。可选择 **立即锁定、1 分钟后锁定、5 分钟后锁定、不自动锁定**；冷启动始终需要验证身份。
 
-<img src="images/lock-settings.png" width="280" alt="后台自动锁定的四种设置" />
+<img src="images/lock-settings.png" width="280" alt="后台锁定时限、照片隐私模式开关和立即锁定按钮" />
 
 卡片字段在本机加密保存，移动端设备密钥使用系统安全存储。卡面图片保存在应用私有目录，未单独加密；照片本身含有卡号时，需自行遮挡图片中的号码。Web 预览用于界面展示，不替代移动端身份验证与存储安全验收。
 
@@ -136,6 +155,6 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
 
 ## 截图与版本记录
 
-截图于 2026-10-11 从 `main` 的 3.0.2 页面采集。仅隐藏 Expo 的开发加载指示，不修改应用布局或功能；截图中的五张卡片通过添加表单建立，均为虚构示例。
+演示图于 2026-10-12 从 `main` 的 4.0.0 页面重新采集，仅在截图时隐藏 Expo 开发刷新浮标，没有改写应用布局或功能。八张卡片通过添加表单建立，类型、常用、搜索、图片编辑、排序与备份均通过实际页面操作展示。用户真机照片和原始设计图按 SHA-256 校验保持原样。采集脚本为 `scripts/capture-cardbox-docs.cjs`，版本、源码提交、视口、文件清单与受保护图片哈希见 [采集记录](images/demo-manifest.json)。
 
 Android APK 已通过 EAS 构建并作为 [3.0.2 Release 附件](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) 发布。构建成功与完整真机验收分别记录，验收进度见 [Android 验收步骤](TESTING.md)。

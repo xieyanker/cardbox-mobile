@@ -25,8 +25,8 @@ pnpm test:browse
 
 ## Web 开发预览
 
-以下使用虚构测试卡片，记录三种布局：
+以下为 2026-10-12 更新的 4.0.0 Web 演示图，使用虚构卡片展示三种布局。3.0 采集图片作为历史归档保留在本目录，原始设计图及用户真机照片保持原样：
 
 | 堆叠 | 聚焦 | 钱包 |
 | --- | --- | --- |
-| ![堆叠模式](images/cardbox-3.0-stack.png) | ![聚焦模式](images/cardbox-3.0-focus.png) | ![钱包模式](images/cardbox-3.0-wallet.png) |
+| ![4.0 堆叠模式](../images/home-stack.png) | ![4.0 聚焦模式](../images/home-focus.png) | ![4.0 钱包模式](../images/home-wallet.png) |
