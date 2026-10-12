@@ -4,6 +4,8 @@
 
 ## 现有资料与分析依据
 
+4.0 流程拆分：`use-cardbox-editor` 管理草稿、选择图片和保存 / 删除；`use-cardbox-backup` 管理备份密码、导入导出和恢复点；`use-cardbox-navigation` 管理页面 / 选卡 / 敏感信息状态，`use-cardbox-back-navigation` 统一返回与未保存确认；`use-cardbox-operations` 统一认证、忙碌互斥、确认框与错误提示；`use-cardbox-storage-management` 管理存储清理。`cardbox-image-maintenance` 共享提交后的图片清理策略。主页面负责组合这些模块与界面，不再承载上述流程状态机；存储键、数据格式与密码参数保持兼容。
+
 4.0 新组件为 `card-grid`、`card-sort`、`backup-panel`、`card-image-editor` 与原生 `privacy-guard`；查找 / 合并 / 到期和裁剪几何在 shared 模块，偏好与备份统计使用独立 hooks / lib，恢复点在卡包 repository 队列内写入。完整兼容边界与新存储键见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。运行 `pnpm test:4` 可执行新功能专项浏览器检查；使用匹配项目的 pnpm 9.12.0，浏览器测试只使用独立上下文与虚构卡片。新依赖匹配 SDK 54，原生效果仍需真机验收。
 
 新增这些文件前，项目内未发现 README、独立设计文档或开发指南。已有资料主要是源码、配置、源码注释以及 Git 提交记录。
