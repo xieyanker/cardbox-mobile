@@ -107,7 +107,10 @@ Android 从 [SDK 54 Expo Go 下载页](https://expo.dev/go?sdkVersion=54&platfor
 pnpm check
 pnpm lint
 pnpm test
+pnpm test:sort
 ```
+
+`test:sort` 需要正在运行的 Web 开发服务，默认地址为 `http://localhost:8084/`，可用 `CARDBOX_TEST_URL` 指定。它使用独立浏览器上下文和 80 张虚构卡片，检查跨屏 / 取消 / 失败 / 持久化及触屏操作，不访问手机卡包。也可直接运行 `node scripts/test-cardbox-sort.cjs`。排序手势挂在列表外层，`cardbox-sort-drag` 负责边缘速度、滚动边界和仅松手提交一次；浮动预览使虚拟列表回收原行时手势保持有效。
 
 当前会话的 pnpm 包装入口可能自动安装依赖；首轮开发使用项目指定的 pnpm 9.12.0 维护锁文件，禁用依赖安装脚本。实际检查也可使用已安装的本地工具入口：
 

@@ -16,6 +16,7 @@
     "test:web": "node scripts/test-cardbox-web.cjs",
     "test:browse": "node scripts/test-cardbox-browse.cjs",
     "test:4": "node scripts/test-cardbox-4.cjs",
+    "test:sort": "node scripts/test-cardbox-sort.cjs",
     "benchmark:backup": "node scripts/benchmark-cardbox-backup.cjs",
     "benchmark:android": "node scripts/benchmark-cardbox-android.cjs",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
