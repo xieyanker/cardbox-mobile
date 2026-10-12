@@ -33,20 +33,22 @@ export function useCardboxBrowse() {
   }, []);
   const selectMode = useCallback((next: BrowseMode) => {
     changed.current = true;
-    setMode(next);
-    writes.current = writes.current
-      .catch(() => undefined)
-      .then(() => AsyncStorage.setItem(BROWSE_MODE_KEY, next))
-      .catch(() => undefined);
+    const operation = writes.current.then(async () => {
+      await AsyncStorage.setItem(BROWSE_MODE_KEY, next);
+      setMode(next);
+    });
+    writes.current = operation.catch(() => undefined);
+    return operation;
   }, []);
   const saveOrder = useCallback((next: BrowseMode[]) => {
     orderChanged.current = true;
     const valid = parseBrowseOrder(JSON.stringify(next));
-    setOrder(valid);
-    writes.current = writes.current
-      .catch(() => undefined)
-      .then(() => AsyncStorage.setItem(BROWSE_ORDER_KEY, JSON.stringify(valid)))
-      .catch(() => undefined);
+    const operation = writes.current.then(async () => {
+      await AsyncStorage.setItem(BROWSE_ORDER_KEY, JSON.stringify(valid));
+      setOrder(valid);
+    });
+    writes.current = operation.catch(() => undefined);
+    return operation;
   }, []);
   return { mode, order, selectMode, saveOrder };
 }

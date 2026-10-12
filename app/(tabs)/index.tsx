@@ -35,6 +35,7 @@ import { useCardboxCards } from "@/hooks/use-cardbox-cards";
 import { useCardboxBrowse } from "@/hooks/use-cardbox-browse";
 import {
   buildBackupCards,
+  cleanupOwnedImages,
   persistCardImage,
   readBackupFile,
   restoreBackupCards,
@@ -89,6 +90,12 @@ export default function HomeScreen() {
     version: number;
   } | null>(null);
   const [draft, setDraft] = useState<Card | null>(null);
+  const initialDraft = useRef<Card | null>(null);
+  const [leaveEditor, setLeaveEditor] = useState(false);
+  const suspendedDraft = useRef<{
+    draft: Card;
+    pendingImage: string | null;
+  } | null>(null);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [backupMenuOpen, setBackupMenuOpen] = useState(false);
@@ -124,6 +131,9 @@ export default function HomeScreen() {
     setNotice(null);
     setRevealed(null);
     setDraft(null);
+    initialDraft.current = null;
+    suspendedDraft.current = null;
+    setLeaveEditor(false);
     setPendingImage(null);
     setPassword("");
     setPasswordVisible(false);
@@ -136,8 +146,35 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (access.locked) closeTransientState();
-  }, [access.locked, closeTransientState]);
+    if (access.locked) {
+      if (draft) suspendedDraft.current = { draft, pendingImage };
+      setRevealed(null);
+      setPassword("");
+      setPasswordVisible(false);
+      setBackupAsset(null);
+      setMenuOpen(false);
+      setBackupMenuOpen(false);
+      confirmationRef.current?.resolve(false);
+      setConfirmation(null);
+      setLeaveEditor(false);
+    } else if (suspendedDraft.current) {
+      setDraft(suspendedDraft.current.draft);
+      setPendingImage(suspendedDraft.current.pendingImage);
+      setScreen("editor");
+      suspendedDraft.current = null;
+    }
+  }, [access.locked, draft, pendingImage]);
+
+  const requestBack = useCallback(() => {
+    if (workingRef.current) return;
+    if (
+      screen === "editor" &&
+      draft &&
+      JSON.stringify(draft) !== JSON.stringify(initialDraft.current)
+    ) {
+      setLeaveEditor(true);
+    } else closeTransientState();
+  }, [screen, draft, closeTransientState]);
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
@@ -145,6 +182,10 @@ export default function HomeScreen() {
         if (confirmationRef.current) {
           confirmationRef.current.resolve(false);
           setConfirmation(null);
+          return true;
+        }
+        if (leaveEditor) {
+          setLeaveEditor(false);
           return true;
         }
         if (pendingImage) {
@@ -160,14 +201,21 @@ export default function HomeScreen() {
           return true;
         }
         if (screen !== "home") {
-          closeTransientState();
+          requestBack();
           return true;
         }
         return false;
       },
     );
     return () => subscription.remove();
-  }, [screen, menuOpen, backupMenuOpen, pendingImage, closeTransientState]);
+  }, [
+    screen,
+    menuOpen,
+    backupMenuOpen,
+    pendingImage,
+    requestBack,
+    leaveEditor,
+  ]);
 
   async function run(action: () => Promise<void>) {
     if (workingRef.current) return;
@@ -251,7 +299,7 @@ export default function HomeScreen() {
     setMenuOpen(false);
     setBackupMenuOpen(false);
     setRevealed(null);
-    setDraft({
+    const next: Card = {
       id: randomUUID(),
       name: "",
       number: "",
@@ -260,13 +308,16 @@ export default function HomeScreen() {
       note: "",
       tone: CARD_TONES[cards.length % CARD_TONES.length],
       type: "debit",
-    });
+    };
+    initialDraft.current = next;
+    setDraft(next);
     setScreen("editor");
   }
 
   async function editCurrent() {
     if (!current || !(await authenticate("验证身份后编辑卡片"))) return;
     setRevealed(null);
+    initialDraft.current = { ...current };
     setDraft({ ...current });
     setScreen("editor");
   }
@@ -282,6 +333,7 @@ export default function HomeScreen() {
       number: draft.number.replace(/\s/g, ""),
     };
     const originalImage = saved.image;
+    const previous = await storage.read();
     if (saved.image) saved.image = await persistCardImage(saved.image);
     try {
       ensureAccessible();
@@ -296,6 +348,9 @@ export default function HomeScreen() {
       throw error;
     }
     if (!accessRef.current.isAccessible()) return;
+    await cleanupOwnedImages(previous, await storage.read()).catch(() =>
+      notify("卡片已保存", "旧卡面暂未清理，可稍后在存储管理中重试。"),
+    );
     setSelectedId(saved.id);
     setDraft(null);
     setScreen("home");
@@ -508,6 +563,7 @@ export default function HomeScreen() {
     ensureAccessible();
     setBackupProgress("正在恢复卡片和图片…");
     const restored = await restoreBackupCards(parsed);
+    const previous = storage.ready ? await storage.read() : [];
     try {
       ensureAccessible();
       if (storage.ready) await storage.update(() => restored.cards);
@@ -517,6 +573,9 @@ export default function HomeScreen() {
       throw error;
     }
     if (!accessRef.current.isAccessible()) return;
+    await cleanupOwnedImages(previous, restored.cards).catch(() =>
+      notify("恢复完成", "旧卡面暂未清理，可稍后重试。"),
+    );
     setSelectedId(restored.cards[0]?.id ?? null);
     closeTransientState();
     notify("恢复完成", `已恢复 ${restored.cards.length} 张卡片。`);
@@ -690,7 +749,7 @@ export default function HomeScreen() {
             <Pressable
               disabled={busy}
               style={styles.iconButton}
-              onPress={closeTransientState}
+              onPress={requestBack}
               accessibilityLabel="返回首页"
             >
               {icon("chevron-back")}
@@ -775,7 +834,7 @@ export default function HomeScreen() {
           disabled={busy}
           onChange={(mode) => {
             setRevealed(null);
-            browse.selectMode(mode);
+            void run(() => browse.selectMode(mode));
           }}
         />
       )}
@@ -1027,7 +1086,7 @@ export default function HomeScreen() {
                           next[index + direction],
                           next[index],
                         ];
-                        browse.saveOrder(next);
+                        void run(() => browse.saveOrder(next));
                       }}
                     >
                       {icon(direction < 0 ? "arrow-up" : "arrow-down", 20)}
@@ -1041,7 +1100,9 @@ export default function HomeScreen() {
             accessibilityLabel="恢复默认模式顺序"
             disabled={busy}
             style={styles.outline}
-            onPress={() => browse.saveOrder([...DEFAULT_BROWSE_ORDER])}
+            onPress={() =>
+              void run(() => browse.saveOrder([...DEFAULT_BROWSE_ORDER]))
+            }
           >
             <Text style={styles.outlineText}>恢复默认顺序</Text>
           </Pressable>
@@ -1205,6 +1266,38 @@ export default function HomeScreen() {
               onPress={() => setPendingImage(null)}
             >
               <Text style={styles.muted}>取消</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {leaveEditor && (
+        <View style={styles.sheetBackdrop}>
+          <View style={styles.sheet}>
+            <Text style={styles.title}>尚未保存</Text>
+            <Text style={styles.muted}>卡片内容已修改，离开前是否保存？</Text>
+            <Pressable
+              disabled={busy}
+              style={styles.primary}
+              onPress={() => {
+                setLeaveEditor(false);
+                void run(saveDraft);
+              }}
+            >
+              <Text style={styles.primaryText}>保存修改</Text>
+            </Pressable>
+            <Pressable
+              disabled={busy}
+              style={styles.destructive}
+              onPress={closeTransientState}
+            >
+              <Text style={styles.destructiveText}>放弃修改</Text>
+            </Pressable>
+            <Pressable
+              style={styles.outline}
+              onPress={() => setLeaveEditor(false)}
+            >
+              <Text style={styles.outlineText}>继续编辑</Text>
             </Pressable>
           </View>
         </View>

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildBackupCards,
+  cleanupOwnedImages,
   persistCardImage,
   restoreBackupCards,
 } from "../lib/cardbox-files";
@@ -50,6 +51,30 @@ beforeEach(() => {
 });
 
 describe("card images and backup restores", () => {
+  it("only cleans unreferenced app-owned image files, preserving shared and external paths", async () => {
+    await cleanupOwnedImages(
+      [
+        { ...card, image: "file:///documents/cardbox-images/old.jpg" },
+        {
+          ...card,
+          id: "two",
+          image: "file:///documents/cardbox-images/shared.png",
+        },
+        { ...card, id: "three", image: "file:///other/image.jpg" },
+        {
+          ...card,
+          id: "four",
+          image: "file:///documents/cardbox-images/../private.jpg",
+        },
+      ],
+      [{ ...card, image: "file:///documents/cardbox-images/shared.png" }],
+    );
+    expect(files.remove).toHaveBeenCalledTimes(1);
+    expect(files.remove).toHaveBeenCalledWith(
+      "file:///documents/cardbox-images/old.jpg",
+      { idempotent: true },
+    );
+  });
   it("removes a partial image when copying fails", async () => {
     files.copy.mockRejectedValueOnce(new Error("disk full"));
     await expect(persistCardImage("file:///cache/card.jpg")).rejects.toThrow(

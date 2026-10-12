@@ -13,7 +13,7 @@ export function editExpiryInput(
   previous: string,
   text: string,
   selection: Selection,
-): { value: string; selection: Selection } {
+): { value: string; selection: Selection; error?: string } {
   const mask = expiryInputMask(previous);
   let start = 0;
   while (start < mask.length && mask[start] === text[start]) start++;
@@ -52,7 +52,41 @@ export function editExpiryInput(
       textEnd = start;
     }
   }
-  const inserted = digitsOnly(text.slice(start, textEnd));
+  let inserted = digitsOnly(text.slice(start, textEnd));
+  const remaining = digitsOnly(mask.slice(0, start) + mask.slice(end));
+  if (
+    inserted.length === 6 &&
+    remaining.length === 0 &&
+    /^\d{2}20\d{2}$/.test(inserted)
+  ) {
+    inserted = inserted.slice(0, 2) + inserted.slice(4);
+  } else if (inserted.length > 4 || remaining.length + inserted.length > 4) {
+    // A fifth key at the end is ignored; a long paste must never change the year silently.
+    if (inserted.length === 1 && remaining.length === 4) {
+      // Retain normal insertion-in-the-middle behavior; ignore an extra trailing key.
+      if (start < 5) {
+        const digits = (
+          digitsOnly(mask.slice(0, start)) +
+          inserted +
+          digitsOnly(mask.slice(end))
+        ).slice(0, 4);
+        const cursor = Math.min(digitsOnly(mask.slice(0, start)).length + 1, 4);
+        return {
+          value: `${digits.slice(0, 2)}/${digits.slice(2)}`,
+          selection: {
+            start: cursor < 2 ? cursor : cursor + 1,
+            end: cursor < 2 ? cursor : cursor + 1,
+          },
+        };
+      }
+      return { value: previous, selection: { ...selection } };
+    }
+    return {
+      value: previous,
+      selection: { ...selection },
+      error: "请输入 MM/YY，或粘贴 MM/YYYY（20xx 年）。",
+    };
+  }
 
   // Backspace/Delete on the fixed slash removes the adjacent digit instead.
   if (mask.slice(start, end) === "/" && textEnd === start) {

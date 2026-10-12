@@ -30,6 +30,8 @@ async function visible(name) {
 }
 async function home() {
   await label("返回首页").click();
+  const discard = text("放弃修改");
+  if (await discard.isVisible().catch(() => false)) await discard.click();
   await visible("CardBox");
 }
 async function menu(name) {
@@ -172,6 +174,8 @@ async function add({ name, number, type, image = false }) {
       }
       await expiry.fill("0726");
       assert.equal(await expiry.inputValue(), "07/26");
+      await expiry.fill("07/2026");
+      assert.equal(await expiry.inputValue(), "07/26");
       await expiry.fill("12/30");
       assert.equal(await expiry.inputValue(), "12/30");
       await expiry.press("Home");
@@ -200,6 +204,17 @@ async function add({ name, number, type, image = false }) {
       await home();
     },
   );
+  await step("unsaved editor asks before leaving and supports continuing", async () => {
+    await menu("添加卡片");
+    await label("卡片名称").fill("未保存草稿");
+    await label("返回首页").click();
+    await visible("尚未保存");
+    await text("继续编辑").click();
+    assert.equal(await label("卡片名称").inputValue(), "未保存草稿");
+    await label("返回首页").click();
+    await text("放弃修改").click();
+    await visible("CardBox");
+  });
   await step(
     "add credit card with an image and select the new card",
     async () => {

@@ -56,11 +56,15 @@ describe("expiry single-input mask", () => {
   });
 
   it("pastes digits or the old format, discards non-digits and limits to four digits", () => {
-    for (const text of ["0726", "07/26", " 07 / 26 ", "072699"]) {
+    for (const text of ["0726", "07/26", " 07 / 26 ", "07/2026", "072026"]) {
       expect(editExpiryInput("", text, selection(0, 5)).value).toBe("07/26");
     }
     expect(editExpiryInput("07/26", "", selection(0, 5)).value).toBe("");
     expect(editExpiryInput("", "a__/__", selection(0)).value).toBe("");
+    expect(editExpiryInput("", "072699", selection(0, 5))).toMatchObject({
+      value: "",
+      error: expect.any(String),
+    });
   });
 
   it("edits selected months and years and retains the correct caret with repeated digits", () => {

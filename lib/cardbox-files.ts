@@ -63,6 +63,27 @@ export async function persistCardImage(uri: string) {
   return next;
 }
 
+/** Delete only direct children created by this app, after a successful card commit. */
+export async function cleanupOwnedImages(previous: Card[], next: Card[]) {
+  if (Platform.OS === "web") return;
+  const directory = imageDirectory();
+  const retained = new Set(next.map((card) => card.image));
+  const removed = [...new Set(previous.map((card) => card.image))].filter(
+    (uri): uri is string =>
+      Boolean(
+        uri &&
+        uri.startsWith(directory) &&
+        /^[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(
+          uri.slice(directory.length),
+        ) &&
+        !retained.has(uri),
+      ),
+  );
+  await mapFiles(removed, async (uri) => {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  });
+}
+
 export async function buildBackupCards(cards: Card[]): Promise<BackupCard[]> {
   const backup = await mapFiles(cards, async (card): Promise<BackupCard> => {
     if (!card.image) return card;
@@ -172,8 +193,7 @@ export async function readBackupFile(asset: {
   file?: File;
 }): Promise<string> {
   const size = asset.size ?? asset.file?.size;
-  if (size && size > MAX_BACKUP_BYTES)
-    throw new Error("备份不能超过 50 MB。");
+  if (size && size > MAX_BACKUP_BYTES) throw new Error("备份不能超过 50 MB。");
   if (Platform.OS === "web" && asset.file) return asset.file.text();
   const info = await FileSystem.getInfoAsync(asset.uri);
   if (!info.exists || info.isDirectory || info.size > MAX_BACKUP_BYTES)
