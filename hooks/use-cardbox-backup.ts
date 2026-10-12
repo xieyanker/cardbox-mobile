@@ -66,7 +66,11 @@ export function useCardboxBackup({
   }, []);
   useEffect(() => {
     clearTransient();
-  }, [screen, access.locked, clearTransient]);
+  }, [screen, clearTransient]);
+  useEffect(() => {
+    // Unlocking after a system picker must not clear the file it just returned.
+    if (access.locked) clearTransient();
+  }, [access.locked, clearTransient]);
   const cleanupPreviousImages = (previous: Card[], next: Card[]) =>
     cleanupCardImages(storage, previous, next, notify);
   async function exportBackup() {
