@@ -26,7 +26,12 @@ async function shot(name) {
 const label = (name) => page.getByLabel(name, { exact: true });
 const text = (name) => page.getByText(name, { exact: true });
 async function visible(name) {
-  await text(name).first().waitFor({ state: "visible", timeout: 8000 });
+  const target = /^\d{8,19}$/.test(name)
+    ? page.getByText(new RegExp(name.match(/.{1,4}/g).join("\\s*")), {
+        exact: true,
+      })
+    : text(name);
+  await target.first().waitFor({ state: "visible", timeout: 8000 });
 }
 async function home() {
   await label("返回首页").click();
@@ -68,6 +73,7 @@ async function add({ name, number, type, image = false }) {
     viewport: { width: 390, height: 844 },
     acceptDownloads: true,
     colorScheme: "light",
+    permissions: ["clipboard-read", "clipboard-write"],
   });
   page = await context.newPage();
   page.on("pageerror", (error) => report.errors.push(error.message));
@@ -204,17 +210,20 @@ async function add({ name, number, type, image = false }) {
       await home();
     },
   );
-  await step("unsaved editor asks before leaving and supports continuing", async () => {
-    await menu("添加卡片");
-    await label("卡片名称").fill("未保存草稿");
-    await label("返回首页").click();
-    await visible("尚未保存");
-    await text("继续编辑").click();
-    assert.equal(await label("卡片名称").inputValue(), "未保存草稿");
-    await label("返回首页").click();
-    await text("放弃修改").click();
-    await visible("CardBox");
-  });
+  await step(
+    "unsaved editor asks before leaving and supports continuing",
+    async () => {
+      await menu("添加卡片");
+      await label("卡片名称").fill("未保存草稿");
+      await label("返回首页").click();
+      await visible("尚未保存");
+      await text("继续编辑").click();
+      assert.equal(await label("卡片名称").inputValue(), "未保存草稿");
+      await label("返回首页").click();
+      await text("放弃修改").click();
+      await visible("CardBox");
+    },
+  );
   await step(
     "add credit card with an image and select the new card",
     async () => {
@@ -327,8 +336,11 @@ async function add({ name, number, type, image = false }) {
       assert.deepEqual(names, ["测试卡 B", "测试卡 C", "测试卡 A 已修改"]);
       await shot("sort-light");
       await page.reload({ waitUntil: "networkidle" });
+      await visible("测试卡 A 已修改");
+      await visible("3 / 3");
+      await label("全部卡片").click();
+      await label("选择测试卡 B").click();
       await visible("测试卡 B");
-      await visible("1 / 3");
     },
   );
   await step("cancel deletion without changing stored data", async () => {
@@ -347,6 +359,7 @@ async function add({ name, number, type, image = false }) {
   await step("export an encrypted backup containing images", async () => {
     await menu("导出备份");
     await label("备份密码").fill("CardBox-test-password");
+    await label("确认备份密码").fill("CardBox-test-password");
     const downloaded = page.waitForEvent("download", { timeout: 60000 });
     await text("生成加密备份").click();
     backupFile = path.resolve(".expo/cardbox-web-backup.cardbox");
@@ -428,7 +441,7 @@ async function add({ name, number, type, image = false }) {
         .getByRole("img", { name: "测试卡 A 已修改卡面", exact: true })
         .waitFor();
       await page.reload({ waitUntil: "networkidle" });
-      await visible("1 / 3");
+      await visible("3 / 3");
     },
   );
   await step(
@@ -456,6 +469,8 @@ async function add({ name, number, type, image = false }) {
   await step(
     "render on a wide desktop viewport without horizontal overflow",
     async () => {
+      await label("全部卡片").click();
+      await label("选择测试卡 B").click();
       await page.setViewportSize({ width: 1100, height: 800 });
       await page.emulateMedia({ colorScheme: "light" });
       await page.waitForFunction(

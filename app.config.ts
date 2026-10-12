@@ -89,6 +89,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    ["expo-secure-store", { configureAndroidBackup: true }],
     [
       "expo-local-authentication",
       {

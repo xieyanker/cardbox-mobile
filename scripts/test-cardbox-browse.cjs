@@ -73,6 +73,7 @@ const artifacts = path.resolve(
       "聚焦模式",
     ]);
     console.log("PASS mode order settings, boundaries, persistence and reset");
+    await label("下一张卡片").click();
     for (let index = 0; index < 4; index++) await label("下一张卡片").click();
     await label("上一张卡片").click();
     await label("上一张卡片").click();
@@ -103,7 +104,7 @@ const artifacts = path.resolve(
         !(await page.locator("body").innerText()).includes("1234567890123454"),
       );
       await label("验证并显示敏感信息").click();
-      await text("1234567890123454").waitFor();
+      await text("1234 5678 9012 3454").waitFor();
       await label("返回首页").click();
       await deck.waitFor();
       assert(

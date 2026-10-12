@@ -89,6 +89,7 @@ export function useCardboxAccess() {
     setTimeout,
     authenticate: controller.authenticate,
     unlock: controller.unlock,
+    lock: controller.lock,
     snapshot: controller.snapshot,
     waitForForeground: controller.waitForForeground,
     isAccessible: () => {

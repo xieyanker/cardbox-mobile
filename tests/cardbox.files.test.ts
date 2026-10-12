@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildBackupCards,
   cleanupOwnedImages,
+  resolveOwnedImageUri,
   persistCardImage,
   restoreBackupCards,
 } from "../lib/cardbox-files";
@@ -51,6 +52,28 @@ beforeEach(() => {
 });
 
 describe("card images and backup restores", () => {
+  it("resolves old app-container image references without altering arbitrary external paths", () => {
+    expect(
+      resolveOwnedImageUri(
+        "file:///old-container/Documents/cardbox-images/card-1.png",
+      ),
+    ).toBe("file:///documents/cardbox-images/card-1.png");
+    expect(resolveOwnedImageUri("file:///other/card.png")).toBe(
+      "file:///other/card.png",
+    );
+    expect(
+      resolveOwnedImageUri("file:///old/cardbox-images/../private.jpg"),
+    ).toBe("file:///old/cardbox-images/../private.jpg");
+  });
+  it("exports card fields without touching a missing image only when text-only backup is explicitly selected", async () => {
+    const result = await buildBackupCards(
+      [{ ...card, image: "file:///cache/missing.jpg" }],
+      false,
+    );
+    expect(result[0].image).toBeUndefined();
+    expect(result[0].number).toBe(card.number);
+    expect(result[0]).not.toHaveProperty("imageData");
+  });
   it("only cleans unreferenced app-owned image files, preserving shared and external paths", async () => {
     await cleanupOwnedImages(
       [

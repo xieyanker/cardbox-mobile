@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { CARD_TYPES, type Card } from "../../shared/cardbox";
+import { formatCardNumber } from "../../shared/cardbox-tools";
 import { CardFace } from "./card-face";
 import { ExpiryInput } from "./expiry-input";
 import { useCardboxStyles } from "./styles";
@@ -18,9 +19,16 @@ type EditorProps = {
   onChange: (card: Card) => void;
   onPickImage: () => void;
   busy: boolean;
+  onRemoveImage: () => void;
 };
 
-export function CardEditor({ card, onChange, onPickImage, busy }: EditorProps) {
+export function CardEditor({
+  card,
+  onChange,
+  onPickImage,
+  onRemoveImage,
+  busy,
+}: EditorProps) {
   const { styles, colors } = useCardboxStyles();
   const set = (key: keyof Card, value: string) =>
     onChange({ ...card, [key]: value });
@@ -48,6 +56,16 @@ export function CardEditor({ card, onChange, onPickImage, busy }: EditorProps) {
             <Text style={styles.outlineText}>更换卡面图片</Text>
           </View>
         </Pressable>
+        {card.image && (
+          <Pressable
+            accessibilityLabel="移除卡面图片"
+            disabled={busy}
+            style={styles.outline}
+            onPress={onRemoveImage}
+          >
+            <Text style={styles.outlineText}>移除图片，恢复默认卡面</Text>
+          </Pressable>
+        )}
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>卡片名称</Text>
           <TextInput
@@ -93,8 +111,8 @@ export function CardEditor({ card, onChange, onPickImage, busy }: EditorProps) {
           <Text style={styles.fieldLabel}>卡号</Text>
           <TextInput
             accessibilityLabel="卡号"
-            value={card.number}
-            onChangeText={(value) => set("number", value)}
+            value={formatCardNumber(card.number)}
+            onChangeText={(value) => set("number", value.replace(/\s/g, ""))}
             maxLength={32}
             keyboardType="number-pad"
             placeholder="输入卡号"

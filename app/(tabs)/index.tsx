@@ -2,9 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { randomUUID } from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -33,6 +33,16 @@ import { useCardboxStyles } from "@/components/cardbox/styles";
 import { useCardboxAccess } from "@/hooks/use-cardbox-access";
 import { useCardboxCards } from "@/hooks/use-cardbox-cards";
 import { useCardboxBrowse } from "@/hooks/use-cardbox-browse";
+import { useCardboxPreferences } from "@/hooks/use-cardbox-preferences";
+import { CardGrid } from "@/components/cardbox/card-grid";
+import { CardSort } from "@/components/cardbox/card-sort";
+import { filterCards, moveCardTo, mergeCards } from "@/shared/cardbox-tools";
+import { BackupPanel } from "@/components/cardbox/backup-panel";
+import { useCardboxBackupRecord } from "@/hooks/use-cardbox-backup-record";
+import { backupChanges } from "@/lib/cardbox-backup-record";
+import { preferenceSchema } from "@/lib/cardbox-preferences";
+import { CardImageEditor } from "@/components/cardbox/card-image-editor";
+import type { CropSource } from "@/shared/cardbox-crop";
 import {
   buildBackupCards,
   cleanupOwnedImages,
@@ -40,6 +50,8 @@ import {
   readBackupFile,
   restoreBackupCards,
   saveAndroidBackup,
+  imageInventory,
+  removeUnusedImages,
 } from "@/lib/cardbox-files";
 import { decryptBackup, encryptBackup } from "@/lib/cardbox-security";
 import { APP_AUTHOR, APP_REPOSITORY_URL, APP_VERSION } from "@/shared/app-info";
@@ -50,7 +62,6 @@ import {
   backupSchema,
   MAX_BACKUP_BYTES,
   lockTimeoutLabel,
-  moveCard,
   validateCardDraft,
   type Card,
 } from "@/shared/cardbox";
@@ -65,6 +76,7 @@ type Screen =
   | "import"
   | "settings"
   | "browse-settings"
+  | "storage"
   | "about";
 type Confirmation = {
   title: string;
@@ -83,6 +95,14 @@ export default function HomeScreen() {
   const storage = useCardboxCards();
   const access = useCardboxAccess();
   const browse = useCardboxBrowse();
+  const preferences = useCardboxPreferences();
+  const updatePreferences = preferences.update;
+  const hidePhotos = !preferences.ready || preferences.privateImages;
+  const backupRecord = useCardboxBackupRecord();
+  const [selectionReady, setSelectionReady] = useState(false);
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [screen, setScreen] = useState<Screen>("home");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<{
@@ -94,14 +114,26 @@ export default function HomeScreen() {
   const [leaveEditor, setLeaveEditor] = useState(false);
   const suspendedDraft = useRef<{
     draft: Card;
-    pendingImage: string | null;
+    pendingImage: CropSource | null;
   } | null>(null);
-  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<CropSource | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [backupMenuOpen, setBackupMenuOpen] = useState(false);
   const [backupProgress, setBackupProgress] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [includeImages, setIncludeImages] = useState(true);
+  const [mergeImport, setMergeImport] = useState(false);
+  const [inventory, setInventory] = useState<{
+    bytes: number;
+    files: number;
+    unused: string[];
+  } | null>(null);
+  const changes = useMemo(
+    () => backupChanges(storage.cards, backupRecord.value),
+    [storage.cards, backupRecord.value],
+  );
   const [backupAsset, setBackupAsset] = useState<BackupAsset | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [working, setWorking] = useState(false);
@@ -120,12 +152,54 @@ export default function HomeScreen() {
     cards.findIndex((card) => card.id === selectedId),
   );
   const current = cards[selectedIndex];
+  const filtered = useMemo(
+    () =>
+      filterCards(
+        cards,
+        query,
+        typeFilter,
+        preferences.favorites,
+        onlyFavorites,
+      ),
+    [cards, query, typeFilter, preferences.favorites, onlyFavorites],
+  );
   const busy = working || storage.busy || access.authenticating;
   const showSensitive = Boolean(
     current &&
     revealed?.id === current.id &&
     revealed.version === access.privacyVersion,
   );
+  useEffect(() => {
+    if (!selectionReady && storage.ready && preferences.ready) {
+      if (cards.some((card) => card.id === preferences.lastSelectedId))
+        setSelectedId(preferences.lastSelectedId);
+      setSelectionReady(true);
+    }
+  }, [
+    selectionReady,
+    storage.ready,
+    preferences.ready,
+    preferences.lastSelectedId,
+    cards,
+  ]);
+  const lastRemembered = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectionReady || !current || lastRemembered.current === current.id)
+      return;
+    lastRemembered.current = current.id;
+    void updatePreferences((value) => ({
+      ...value,
+      lastSelectedId: current.id,
+    })).catch(() => {
+      lastRemembered.current = null;
+      notify("浏览位置未保存", "请检查存储空间后重试。");
+    });
+  }, [selectionReady, current, updatePreferences]);
+  useEffect(() => {
+    if (!revealed) return;
+    const timer = setTimeout(() => setRevealed(null), 30_000);
+    return () => clearTimeout(timer);
+  }, [revealed]);
 
   const closeTransientState = useCallback(() => {
     setNotice(null);
@@ -136,6 +210,7 @@ export default function HomeScreen() {
     setLeaveEditor(false);
     setPendingImage(null);
     setPassword("");
+    setPasswordConfirmation("");
     setPasswordVisible(false);
     setBackupAsset(null);
     setMenuOpen(false);
@@ -150,6 +225,7 @@ export default function HomeScreen() {
       if (draft) suspendedDraft.current = { draft, pendingImage };
       setRevealed(null);
       setPassword("");
+      setPasswordConfirmation("");
       setPasswordVisible(false);
       setBackupAsset(null);
       setMenuOpen(false);
@@ -327,6 +403,20 @@ export default function HomeScreen() {
     ensureAccessible();
     const validation = validateCardDraft(draft);
     if (validation) throw new Error(validation);
+    const duplicate = cards.find(
+      (card) =>
+        card.id !== draft.id &&
+        card.number.replace(/\s/g, "") === draft.number.replace(/\s/g, ""),
+    );
+    if (
+      duplicate &&
+      !(await askConfirmation(
+        "卡号重复",
+        `已有“${duplicate.name}”使用这个卡号，仍然保存吗？`,
+      ))
+    )
+      return;
+    ensureAccessible();
     const saved: Card = {
       ...draft,
       name: draft.name.trim(),
@@ -348,11 +438,10 @@ export default function HomeScreen() {
       throw error;
     }
     if (!accessRef.current.isAccessible()) return;
-    await cleanupOwnedImages(previous, await storage.read()).catch(() =>
-      notify("卡片已保存", "旧卡面暂未清理，可稍后在存储管理中重试。"),
-    );
+    await cleanupPreviousImages(previous, await storage.read());
     setSelectedId(saved.id);
     setDraft(null);
+    suspendedDraft.current = null;
     setScreen("home");
   }
 
@@ -364,6 +453,34 @@ export default function HomeScreen() {
       await FileSystem.deleteAsync(uri, { idempotent: true }).catch(
         () => undefined,
       );
+  }
+  async function cleanupPreviousImages(previous: Card[], next: Card[]) {
+    try {
+      const point = await storage.readRestorePoint();
+      await cleanupOwnedImages(previous, [...next, ...(point?.cards ?? [])]);
+    } catch {
+      notify("数据已保存", "旧图片暂未清理，恢复点与卡包已保留，请稍后重试。");
+    }
+  }
+  async function loadInventory(clean = false) {
+    ensureAccessible();
+    const point = await storage.readRestorePoint();
+    const references = [...(await storage.read()), ...(point?.cards ?? [])].map(
+      (card) => card.image,
+    );
+    if (draft?.image) references.push(draft.image);
+    if (clean) {
+      if (
+        !(await askConfirmation(
+          "清理无用卡面",
+          "仅删除没有被当前卡包或导入恢复点引用的应用自有图片，是否继续？",
+        ))
+      )
+        return;
+      ensureAccessible();
+      await removeUnusedImages(references);
+    }
+    setInventory(await imageInventory(references));
   }
 
   async function chooseImage() {
@@ -380,40 +497,14 @@ export default function HomeScreen() {
     if (result.canceled || !result.assets[0] || !(await resumeAfterPicker()))
       return;
     const image = result.assets[0];
-    const targetRatio = 1.586;
-    const crop = {
-      originX: 0,
-      originY: 0,
-      width: image.width,
-      height: image.height,
-    };
-    if (image.width / image.height > targetRatio) {
-      crop.width = Math.round(image.height * targetRatio);
-      crop.originX = Math.round((image.width - crop.width) / 2);
-    } else {
-      crop.height = Math.round(image.width / targetRatio);
-      crop.originY = Math.round((image.height - crop.height) / 2);
-    }
-    const actions: ImageManipulator.Action[] = [{ crop }];
-    if (crop.width > 1200) actions.push({ resize: { width: 1200 } });
-    const resultImage = await ImageManipulator.manipulateAsync(
-      image.uri,
-      actions,
-      {
-        compress: 0.85,
-        format: ImageManipulator.SaveFormat.JPEG,
-        base64: Platform.OS === "web",
-      },
-    );
     ensureAccessible();
-    // If the app was locked during the picker, authentication succeeded but the old draft was cleared.
     setDraft((previous) => previous ?? draft);
     setScreen("editor");
-    setPendingImage(
-      Platform.OS === "web" && resultImage.base64
-        ? `data:image/jpeg;base64,${resultImage.base64}`
-        : resultImage.uri,
-    );
+    setPendingImage({
+      uri: image.uri,
+      width: image.width,
+      height: image.height,
+    });
   }
 
   async function deleteCurrent() {
@@ -429,8 +520,7 @@ export default function HomeScreen() {
     const next = await storage.update((previous) =>
       previous.filter((card) => card.id !== current.id),
     );
-    if (current.image && !next.some((card) => card.image === current.image))
-      await discardOwnedImage(current.image);
+    await cleanupPreviousImages([current], next);
     setSelectedId(next[Math.min(selectedIndex, next.length - 1)]?.id ?? null);
     setRevealed(null);
   }
@@ -448,9 +538,18 @@ export default function HomeScreen() {
       });
   }
 
-  async function reorder(id: string, direction: -1 | 1) {
+  async function reorderTo(id: string, target: number) {
     ensureAccessible();
-    await storage.update((previous) => moveCard(previous, id, direction));
+    await storage.update((previous) => moveCardTo(previous, id, target));
+  }
+  async function copyField(field: "number" | "cvv") {
+    if (!current || !(await authenticate("验证身份后复制卡片信息"))) return;
+    ensureAccessible();
+    const copied = await Clipboard.setStringAsync(
+      current[field].replace(/\s/g, ""),
+    );
+    if (!copied) throw new Error("复制失败，请检查剪贴板权限。");
+    notify("复制成功", field === "number" ? "卡号已复制。" : "CVV 已复制。");
   }
 
   function openPage(page: Screen) {
@@ -458,6 +557,7 @@ export default function HomeScreen() {
     setMenuOpen(false);
     setBackupMenuOpen(false);
     setPassword("");
+    setPasswordConfirmation("");
     setPasswordVisible(false);
     setBackupAsset(null);
     setRevealed(null);
@@ -466,14 +566,31 @@ export default function HomeScreen() {
 
   async function exportBackup() {
     if (!password.trim()) throw new Error("请输入备份密码。");
+    if (password.length < 8)
+      throw new Error("新备份密码请至少设置 8 位；导入旧备份仍可使用原密码。");
+    if (password !== passwordConfirmation)
+      throw new Error("两次备份密码不一致，请重新输入。");
+    if (!backupRecord.ready)
+      throw new Error("备份记录尚未读取完成，请稍后重试。");
     if (!(await authenticate("验证身份后导出全部卡片"))) return;
     setBackupProgress("正在读取卡片和图片…");
-    const backup = await buildBackupCards(await storage.read());
+    const snapshot = await storage.read();
+    const backup = await buildBackupCards(snapshot, includeImages);
     // Give the progress indicator a frame before password derivation starts.
     await new Promise((resolve) => setTimeout(resolve, 0));
     setBackupProgress("正在加密备份，请稍候…");
     const payload = await encryptBackup(
-      JSON.stringify({ version: 3, cards: backup }),
+      JSON.stringify({
+        version: 3,
+        cards: backup,
+        preferences: preferences.ready
+          ? {
+              favorites: preferences.favorites,
+              lastSelectedId: preferences.lastSelectedId,
+              privateImages: preferences.privateImages,
+            }
+          : undefined,
+      }),
       password,
     );
     if (payload.length > MAX_BACKUP_BYTES)
@@ -522,10 +639,28 @@ export default function HomeScreen() {
           () => undefined,
         );
       }
+      if (!(await resumeAfterPicker())) return;
+      if (
+        !(await askConfirmation(
+          "确认备份保存",
+          "系统分享已结束，请确认备份文件已经保存到所选位置。",
+        ))
+      ) {
+        notify("保存未确认", "备份时间记录未更新，请确认文件已保存后再备份。");
+        return;
+      }
     }
     setPassword("");
+    setPasswordConfirmation("");
     setPasswordVisible(false);
-    notify("备份已生成", `文件：${name}\n请妥善保管备份文件和密码。`);
+    let recorded = true;
+    await backupRecord.save(snapshot, includeImages).catch(() => {
+      recorded = false;
+    });
+    notify(
+      "备份已生成",
+      `文件：${name}\n请妥善保管备份文件和密码。${recorded ? "" : "\n备份时间记录保存失败，请检查存储空间。"}`,
+    );
   }
 
   async function chooseBackup() {
@@ -553,32 +688,109 @@ export default function HomeScreen() {
     } catch {
       throw new Error("密码不正确或备份已损坏。");
     }
-    const parsed = backupSchema.parse(input);
+    const parsed = backupSchema
+      .extend({ preferences: preferenceSchema.optional() })
+      .parse(input);
     ensureAccessible();
+    const currentCards = storage.ready ? await storage.read() : [];
+    const seenNumbers = new Set(
+      currentCards.map((card) => card.number.replace(/\s/g, "")),
+    );
+    const toImport = mergeImport
+      ? parsed.cards.filter((card) => {
+          const number = card.number.replace(/\s/g, "");
+          if (seenNumbers.has(number)) return false;
+          seenNumbers.add(number);
+          return true;
+        })
+      : parsed.cards;
+    if (mergeImport && currentCards.length + toImport.length > 1000)
+      throw new Error("合并后超过 1000 张卡片，请先整理卡包或选择替换方式。");
     const description = storage.ready
-      ? `将以备份中的 ${parsed.cards.length} 张卡片替换当前卡包。是否继续？`
+      ? `${mergeImport ? "合并" : "替换"}：备份中 ${parsed.cards.length} 张卡片、${parsed.cards.filter((card) => card.imageData || card.image).length} 张卡面。${mergeImport ? `新增 ${toImport.length} 张，重复卡号跳过。` : "将替换当前卡包，操作前保存加密恢复点。"}\n${parsed.cards
+          .slice(0, 5)
+          .map((card) => card.name)
+          .join("、")}${parsed.cards.length > 5 ? "…" : ""}\n是否继续？`
       : `将恢复备份中的 ${parsed.cards.length} 张卡片。无法读取的原始数据会另存到本机，供后续排查。是否继续？`;
     setBackupProgress("");
     if (!(await askConfirmation("恢复备份", description))) return;
     ensureAccessible();
     setBackupProgress("正在恢复卡片和图片…");
-    const restored = await restoreBackupCards(parsed);
-    const previous = storage.ready ? await storage.read() : [];
+    if (storage.ready)
+      await storage.createRestorePoint({
+        favorites: preferences.favorites,
+        lastSelectedId: preferences.lastSelectedId,
+        privateImages: preferences.privateImages,
+      });
+    const restored = await restoreBackupCards({ ...parsed, cards: toImport });
+    const previous = currentCards;
+    const merged = mergeImport
+      ? mergeCards(previous, restored.cards, randomUUID)
+      : { cards: restored.cards, added: restored.cards.length, skipped: 0 };
     try {
       ensureAccessible();
-      if (storage.ready) await storage.update(() => restored.cards);
-      else await storage.recover(restored.cards);
+      if (storage.ready) await storage.update(() => merged.cards);
+      else await storage.recover(merged.cards);
     } catch (error) {
       await restored.discard();
       throw error;
     }
     if (!accessRef.current.isAccessible()) return;
-    await cleanupOwnedImages(previous, restored.cards).catch(() =>
-      notify("恢复完成", "旧卡面暂未清理，可稍后重试。"),
-    );
-    setSelectedId(restored.cards[0]?.id ?? null);
+    await cleanupPreviousImages([...previous, ...restored.cards], merged.cards);
+    let preferenceWarning = "";
+    if (parsed.preferences && !mergeImport) {
+      await preferences
+        .update((value) => ({
+          ...parsed.preferences!,
+          privateImages:
+            value.privateImages || parsed.preferences!.privateImages,
+        }))
+        .catch(() => {
+          preferenceWarning = "\n常用卡设置保存失败，卡片已恢复，请稍后重试。";
+        });
+    }
+    const selected =
+      !mergeImport &&
+      merged.cards.some(
+        (card) => card.id === parsed.preferences?.lastSelectedId,
+      )
+        ? parsed.preferences!.lastSelectedId
+        : (merged.cards[0]?.id ?? null);
+    setSelectedId(selected);
     closeTransientState();
-    notify("恢复完成", `已恢复 ${restored.cards.length} 张卡片。`);
+    notify(
+      "恢复完成",
+      mergeImport
+        ? `新增 ${merged.added} 张卡片，跳过 ${parsed.cards.length - merged.added} 张重复卡片。`
+        : `已恢复 ${merged.cards.length} 张卡片。${preferenceWarning}`,
+    );
+  }
+  async function restorePreviousPack() {
+    if (!(await authenticate("验证身份后恢复上次导入前卡包"))) return;
+    const point = await storage.readRestorePoint();
+    if (!point) throw new Error("还没有导入前恢复点。");
+    if (
+      !(await askConfirmation(
+        "恢复上次卡包",
+        `恢复导入前的 ${point.cards.length} 张卡片，将替换当前卡包，是否继续？`,
+      ))
+    )
+      return;
+    ensureAccessible();
+    const previous = storage.ready ? await storage.read() : [];
+    if (storage.ready) await storage.update(() => point.cards);
+    else await storage.recover(point.cards);
+    let preferenceWarning = "";
+    if (point.preferences)
+      await preferences
+        .update(() => point.preferences!)
+        .catch(() => {
+          preferenceWarning = "常用卡设置保存失败，请稍后重试。";
+        });
+    await cleanupPreviousImages(previous, point.cards);
+    setSelectedId(point.cards[0]?.id ?? null);
+    closeTransientState();
+    notify("恢复完成", "已恢复上次导入前的卡包。" + preferenceWarning);
   }
 
   const titles: Record<Screen, string> = {
@@ -594,6 +806,7 @@ export default function HomeScreen() {
     settings: "自动锁定",
     "browse-settings": "浏览模式",
     about: "关于应用",
+    storage: "存储管理",
   };
   const icon = (
     name: React.ComponentProps<typeof Ionicons>["name"],
@@ -612,6 +825,18 @@ export default function HomeScreen() {
       onToggleSensitive={() => void run(toggleSensitive)}
       onEdit={() => void run(editCurrent)}
       onDelete={() => void run(deleteCurrent)}
+      favorite={preferences.favorites.includes(current.id)}
+      onFavorite={() =>
+        void run(() =>
+          preferences.update((value) => ({
+            ...value,
+            favorites: value.favorites.includes(current.id)
+              ? value.favorites.filter((id) => id !== current.id)
+              : [...value.favorites, current.id],
+          })),
+        )
+      }
+      onCopy={(field) => void run(() => copyField(field))}
     />
   );
   const cardNavigation = current && (
@@ -843,7 +1068,10 @@ export default function HomeScreen() {
           browse.mode === "classic" ? (
             <ScrollView contentContainerStyle={styles.content}>
               <View {...swipe.panHandlers}>
-                <CardFace card={current} />
+                <CardFace
+                  card={current}
+                  hideImage={hidePhotos && !showSensitive}
+                />
               </View>
               {cardNavigation}
               {cardDetails}
@@ -851,6 +1079,7 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.grow}>
               <CardBrowser
+                hideImages={hidePhotos}
                 cards={cards}
                 selectedIndex={selectedIndex}
                 mode={browse.mode}
@@ -901,74 +1130,81 @@ export default function HomeScreen() {
         ))}
       {screen === "details" && current && (
         <ScrollView contentContainerStyle={styles.content}>
-          <CardFace card={current} />
+          <CardFace card={current} hideImage={hidePhotos && !showSensitive} />
           {cardDetails}
         </ScrollView>
       )}
 
       {screen === "all" && (
-        <ScrollView contentContainerStyle={styles.content}>
-          {cards.length ? (
-            <View style={styles.grid}>
-              {cards.map((card) => (
-                <Pressable
-                  disabled={busy}
-                  key={card.id}
-                  style={styles.gridItem}
-                  onPress={() => chooseCard(card.id)}
-                >
-                  <CardFace card={card} compact />
-                  <Text style={styles.gridName}>{card.name}</Text>
-                  <Text style={styles.muted}>{CARD_TYPES[card.type]}</Text>
-                </Pressable>
-              ))}
+        <View style={styles.grow}>
+          <View style={[styles.surface, { marginHorizontal: 22, padding: 12 }]}>
+            <TextInput
+              accessibilityLabel="搜索卡片"
+              value={query}
+              onChangeText={setQuery}
+              placeholder="搜索名称或卡号后四位"
+              placeholderTextColor={colors.muted}
+              style={styles.input}
+              autoCorrect={false}
+            />
+            <View style={styles.choices}>
+              {[["all", "全部"], ...Object.entries(CARD_TYPES)].map(
+                ([type, name]) => (
+                  <Pressable
+                    key={type}
+                    accessibilityRole="radio"
+                    accessibilityLabel={name + "筛选"}
+                    accessibilityState={{ checked: typeFilter === type }}
+                    onPress={() => setTypeFilter(type)}
+                    style={[
+                      styles.choice,
+                      typeFilter === type && styles.selectedChoice,
+                    ]}
+                  >
+                    <Text
+                      style={
+                        typeFilter === type ? styles.outlineText : styles.muted
+                      }
+                    >
+                      {name}
+                    </Text>
+                  </Pressable>
+                ),
+              )}
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel="只看常用卡"
+                accessibilityState={{ checked: onlyFavorites }}
+                onPress={() => setOnlyFavorites(!onlyFavorites)}
+                style={[styles.choice, onlyFavorites && styles.selectedChoice]}
+              >
+                <Text style={styles.outlineText}>★ 常用</Text>
+              </Pressable>
             </View>
-          ) : (
-            <Text style={styles.muted}>还没有卡片，点击右下角 + 添加。</Text>
-          )}
-        </ScrollView>
+            <Text style={styles.muted}>
+              找到 {filtered.length} 张卡片 · 常用卡置顶
+            </Text>
+            {preferences.error ? (
+              <Text style={styles.error}>{preferences.error}</Text>
+            ) : null}
+          </View>
+          <CardGrid
+            cards={filtered}
+            favorites={preferences.favorites}
+            privateImages={hidePhotos}
+            busy={busy}
+            onSelect={chooseCard}
+          />
+        </View>
       )}
 
       {screen === "sort" && (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.muted}>
-            点击上下箭头调整卡片顺序，顺序自动保存在本机。
-          </Text>
-          {cards.map((card, index) => (
-            <View key={card.id} style={styles.sortRow}>
-              <Text style={styles.position}>{index + 1}</Text>
-              <View style={styles.thumbnail}>
-                <CardFace card={card} compact />
-              </View>
-              <View style={styles.grow}>
-                <Text style={styles.gridName}>{card.name}</Text>
-                <Text style={styles.muted}>{CARD_TYPES[card.type]}</Text>
-              </View>
-              <Pressable
-                disabled={busy || index === 0}
-                style={[
-                  styles.iconButton,
-                  (busy || index === 0) && styles.disabled,
-                ]}
-                onPress={() => void run(() => reorder(card.id, -1))}
-                accessibilityLabel={`上移${card.name}`}
-              >
-                {icon("arrow-up", 18)}
-              </Pressable>
-              <Pressable
-                disabled={busy || index === cards.length - 1}
-                style={[
-                  styles.iconButton,
-                  (busy || index === cards.length - 1) && styles.disabled,
-                ]}
-                onPress={() => void run(() => reorder(card.id, 1))}
-                accessibilityLabel={`下移${card.name}`}
-              >
-                {icon("arrow-down", 18)}
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
+        <CardSort
+          hideImages={hidePhotos}
+          cards={cards}
+          busy={busy}
+          onMove={(id, target) => void run(() => reorderTo(id, target))}
+        />
       )}
 
       {screen === "editor" && draft && (
@@ -976,84 +1212,40 @@ export default function HomeScreen() {
           card={draft}
           onChange={setDraft}
           onPickImage={() => void run(chooseImage)}
+          onRemoveImage={() =>
+            setDraft((previous) =>
+              previous ? { ...previous, image: undefined } : previous,
+            )
+          }
           busy={busy}
         />
       )}
 
       {(screen === "export" || screen === "import") && (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.backupIntro}>
-            {icon("document-lock-outline", 66)}
-            <Text style={[styles.muted, styles.centerText]}>
-              {screen === "export"
-                ? "导出所有卡片数据（包含卡面图片）\n生成一个加密的 .cardbox 备份文件"
-                : "选择 .cardbox 备份文件\n并输入备份密码进行恢复"}
-            </Text>
-          </View>
-          {screen === "import" && (
-            <Pressable
-              disabled={busy}
-              style={styles.surface}
-              onPress={() => void run(chooseBackup)}
-            >
-              <View style={styles.row}>
-                {icon("folder-outline")}
-                <Text style={[styles.text, styles.grow]} numberOfLines={2}>
-                  {backupAsset ? `已选择：${backupAsset.name}` : "选择备份文件"}
-                </Text>
-              </View>
-            </Pressable>
-          )}
-          <View style={styles.password}>
-            <TextInput
-              accessibilityLabel="备份密码"
-              value={password}
-              onChangeText={setPassword}
-              editable={!busy}
-              secureTextEntry={!passwordVisible}
-              placeholder={
-                screen === "export" ? "设置备份密码" : "输入备份密码"
-              }
-              placeholderTextColor={colors.muted}
-              style={[styles.input, styles.passwordInput]}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Pressable
-              disabled={busy}
-              style={[styles.iconButton, styles.passwordButton]}
-              onPress={() => setPasswordVisible(!passwordVisible)}
-              accessibilityLabel={passwordVisible ? "隐藏密码" : "显示密码"}
-            >
-              {icon(passwordVisible ? "eye-off-outline" : "eye-outline", 19)}
-            </Pressable>
-          </View>
-          <Pressable
-            disabled={busy}
-            style={[styles.primary, busy && styles.disabled]}
-            onPress={() =>
-              void run(screen === "export" ? exportBackup : importBackup)
-            }
-          >
-            <Text style={styles.primaryText}>
-              {working
-                ? backupProgress || "正在处理…"
-                : screen === "export"
-                  ? Platform.OS === "android"
-                    ? "选择保存位置"
-                    : "生成加密备份"
-                  : "开始导入"}
-            </Text>
-          </Pressable>
-          <Text style={styles.muted}>
-            {screen === "export"
-              ? "请妥善保管备份文件和密码，密码丢失后无法恢复。"
-              : "导入会替换当前卡包，确认前请先备份现有卡片。"}
-          </Text>
-        </ScrollView>
+        <BackupPanel
+          importing={screen === "import"}
+          busy={busy}
+          working={working}
+          progress={backupProgress}
+          password={password}
+          onPassword={setPassword}
+          confirmation={passwordConfirmation}
+          onConfirmation={setPasswordConfirmation}
+          visible={passwordVisible}
+          onVisible={() => setPasswordVisible(!passwordVisible)}
+          assetName={backupAsset?.name}
+          onChoose={() => void run(chooseBackup)}
+          onSubmit={() =>
+            void run(screen === "export" ? exportBackup : importBackup)
+          }
+          record={backupRecord.value}
+          changes={changes}
+          includeImages={includeImages}
+          onImages={() => setIncludeImages(!includeImages)}
+          merge={mergeImport}
+          onMerge={setMergeImport}
+          onRestorePoint={() => void run(restorePreviousPack)}
+        />
       )}
 
       {screen === "browse-settings" && (
@@ -1132,6 +1324,37 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           ))}
+          <Pressable
+            disabled={busy || !preferences.ready}
+            accessibilityRole="switch"
+            accessibilityLabel="照片隐私模式"
+            accessibilityState={{ checked: preferences.privateImages }}
+            style={styles.surface}
+            onPress={() =>
+              void run(() =>
+                preferences.update((value) => ({
+                  ...value,
+                  privateImages: !value.privateImages,
+                })),
+              )
+            }
+          >
+            <Text style={styles.text}>
+              照片隐私模式：{preferences.privateImages ? "开启" : "关闭"}
+            </Text>
+            <Text style={styles.muted}>
+              开启后隐藏原始卡面照片，验证并显示敏感信息时才在详情中展示。敏感信息
+              30 秒后自动隐藏。
+            </Text>
+          </Pressable>
+          <Pressable
+            disabled={busy}
+            style={styles.primary}
+            accessibilityLabel="立即锁定"
+            onPress={() => access.lock()}
+          >
+            <Text style={styles.primaryText}>立即锁定</Text>
+          </Pressable>
         </ScrollView>
       )}
 
@@ -1165,6 +1388,38 @@ export default function HomeScreen() {
             </Text>
           </Pressable>
         </View>
+      )}
+
+      {screen === "storage" && (
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.heading}>卡面存储</Text>
+          <Text style={styles.muted}>
+            {Platform.OS === "web"
+              ? "Web 卡面保存在加密卡包中；原生应用可查看私有图片目录占用。"
+              : "清理会保留当前卡包和导入恢复点中的图片。"}
+          </Text>
+          {inventory && (
+            <Text style={styles.text}>
+              {inventory.files} 个图片文件 ·{" "}
+              {(inventory.bytes / 1024 / 1024).toFixed(2)} MB ·{" "}
+              {inventory.unused.length} 个无引用文件
+            </Text>
+          )}
+          <Pressable
+            disabled={busy}
+            style={styles.primary}
+            onPress={() => void run(() => loadInventory())}
+          >
+            <Text style={styles.primaryText}>查看存储占用</Text>
+          </Pressable>
+          <Pressable
+            disabled={busy || Platform.OS === "web"}
+            style={styles.outline}
+            onPress={() => void run(() => loadInventory(true))}
+          >
+            <Text style={styles.outlineText}>清理无用卡面</Text>
+          </Pressable>
+        </ScrollView>
       )}
 
       {screen === "all" && (
@@ -1209,7 +1464,9 @@ export default function HomeScreen() {
                   ["sort", "swap-vertical-outline", "卡片排序"],
                   ["backup", "folder-open-outline", "备份管理"],
                   ["settings", "lock-closed-outline", "自动锁定"],
+                  ["lock", "lock-closed", "立即锁定"],
                   ["browse-settings", "options-outline", "浏览模式"],
+                  ["storage", "folder-outline", "存储管理"],
                   ["about", "information-circle-outline", "关于应用"],
                 ] as const)
             ).map(([page, name, label]) => (
@@ -1220,6 +1477,7 @@ export default function HomeScreen() {
                 style={styles.menuItem}
                 onPress={() => {
                   if (page === "add") void run(async () => startNew());
+                  else if (page === "lock") access.lock();
                   else if (page === "backup") setBackupMenuOpen(true);
                   else openPage(page);
                 }}
@@ -1233,42 +1491,23 @@ export default function HomeScreen() {
       )}
 
       {pendingImage && (
-        <View style={styles.sheetBackdrop}>
-          <View style={styles.sheet}>
-            <Text style={styles.title}>确认使用卡面</Text>
-            <Image
-              source={{ uri: pendingImage }}
-              style={{ width: "100%", aspectRatio: 1.586, borderRadius: 12 }}
-              resizeMode="cover"
-            />
-            <Pressable
-              style={styles.primary}
-              onPress={() => {
-                setDraft((previous) =>
-                  previous ? { ...previous, image: pendingImage } : previous,
-                );
-                setPendingImage(null);
-              }}
-            >
-              <Text style={styles.primaryText}>确认使用</Text>
-            </Pressable>
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => {
-                setPendingImage(null);
-                void run(chooseImage);
-              }}
-            >
-              <Text style={styles.outlineText}>重新选择</Text>
-            </Pressable>
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => setPendingImage(null)}
-            >
-              <Text style={styles.muted}>取消</Text>
-            </Pressable>
-          </View>
-        </View>
+        <CardImageEditor
+          key={pendingImage.uri}
+          source={pendingImage}
+          onConfirm={(uri) => {
+            ensureAccessible();
+            setDraft((previous) =>
+              previous ? { ...previous, image: uri } : previous,
+            );
+            setPendingImage(null);
+          }}
+          onCancel={() => setPendingImage(null)}
+          onChoose={() => {
+            setPendingImage(null);
+            void run(chooseImage);
+          }}
+          onError={(message) => notify("卡面未完成", message)}
+        />
       )}
 
       {leaveEditor && (

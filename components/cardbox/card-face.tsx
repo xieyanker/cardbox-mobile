@@ -2,6 +2,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import { useEffect, useState } from "react";
 import { CARD_TYPES, type Card } from "../../shared/cardbox";
 import { cardTextColor } from "../../shared/cardbox-color";
+import { resolveOwnedImageUri } from "../../lib/cardbox-files";
 import { useCardboxStyles } from "./styles";
 
 export function maskCardNumber(number: string) {
@@ -32,7 +33,7 @@ export function CardFace({
     >
       {card.image && !hideImage && !imageFailed ? (
         <Image
-          source={{ uri: card.image }}
+          source={{ uri: resolveOwnedImageUri(card.image) }}
           style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
           accessibilityLabel={`${card.name}卡面`}
@@ -42,9 +43,11 @@ export function CardFace({
         <>
           <View style={styles.cardMeta}>
             <Text
+              numberOfLines={2}
               style={[
                 styles.cardBrand,
                 foreground,
+                { flexShrink: 1 },
                 compact && { fontSize: 12 },
               ]}
             >

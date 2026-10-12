@@ -13,6 +13,16 @@ function imageDirectory() {
   return `${FileSystem.documentDirectory}cardbox-images/`;
 }
 
+/** App-container roots may change on upgrade/restore; only remap our own named images. */
+export function resolveOwnedImageUri(uri: string) {
+  if (Platform.OS === "web" || !FileSystem.documentDirectory) return uri;
+  const match =
+    /\/cardbox-images\/([a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp))$/i.exec(uri);
+  return match
+    ? `${FileSystem.documentDirectory}cardbox-images/${match[1]}`
+    : uri;
+}
+
 async function newImagePath(extension = "jpg", preparedDirectory?: string) {
   const directory = preparedDirectory ?? imageDirectory();
   if (!preparedDirectory)
@@ -50,6 +60,7 @@ async function mapFiles<T, R>(
 
 export async function persistCardImage(uri: string) {
   if (Platform.OS === "web") return uri;
+  uri = resolveOwnedImageUri(uri);
   if (uri.startsWith(imageDirectory())) return uri;
   const next = await newImagePath();
   try {
@@ -67,25 +78,72 @@ export async function persistCardImage(uri: string) {
 export async function cleanupOwnedImages(previous: Card[], next: Card[]) {
   if (Platform.OS === "web") return;
   const directory = imageDirectory();
-  const retained = new Set(next.map((card) => card.image));
-  const removed = [...new Set(previous.map((card) => card.image))].filter(
-    (uri): uri is string =>
-      Boolean(
-        uri &&
-        uri.startsWith(directory) &&
-        /^[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(
-          uri.slice(directory.length),
-        ) &&
-        !retained.has(uri),
+  const retained = new Set(
+    next.map((card) =>
+      card.image ? resolveOwnedImageUri(card.image) : undefined,
+    ),
+  );
+  const removed = [
+    ...new Set(
+      previous.map((card) =>
+        card.image ? resolveOwnedImageUri(card.image) : undefined,
       ),
+    ),
+  ].filter((uri): uri is string =>
+    Boolean(
+      uri &&
+      uri.startsWith(directory) &&
+      /^[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(
+        uri.slice(directory.length),
+      ) &&
+      !retained.has(uri),
+    ),
   );
   await mapFiles(removed, async (uri) => {
     await FileSystem.deleteAsync(uri, { idempotent: true });
   });
 }
 
-export async function buildBackupCards(cards: Card[]): Promise<BackupCard[]> {
+export async function imageInventory(references: (string | undefined)[]) {
+  if (Platform.OS === "web")
+    return { bytes: 0, files: 0, unused: [] as string[] };
+  const directory = imageDirectory();
+  const info = await FileSystem.getInfoAsync(directory);
+  if (!info.exists) return { bytes: 0, files: 0, unused: [] as string[] };
+  const names = (await FileSystem.readDirectoryAsync(directory)).filter(
+    (name) => /^[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(name),
+  );
+  const retained = new Set(
+    references.map((uri) => (uri ? resolveOwnedImageUri(uri) : undefined)),
+  );
+  const entries = await mapFiles(names, async (name) => {
+    const uri = directory + name;
+    const file = await FileSystem.getInfoAsync(uri);
+    return { uri, size: file.exists && !file.isDirectory ? file.size : 0 };
+  });
+  return {
+    bytes: entries.reduce((total, entry) => total + entry.size, 0),
+    files: entries.length,
+    unused: entries
+      .filter((entry) => !retained.has(entry.uri))
+      .map((entry) => entry.uri),
+  };
+}
+
+export async function removeUnusedImages(references: (string | undefined)[]) {
+  const inventory = await imageInventory(references);
+  await mapFiles(inventory.unused, (uri) =>
+    FileSystem.deleteAsync(uri, { idempotent: true }),
+  );
+  return inventory.unused.length;
+}
+
+export async function buildBackupCards(
+  cards: Card[],
+  includeImages = true,
+): Promise<BackupCard[]> {
   const backup = await mapFiles(cards, async (card): Promise<BackupCard> => {
+    if (!includeImages) return { ...card, image: undefined };
     if (!card.image) return card;
     const dataImage =
       /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(
@@ -101,16 +159,17 @@ export async function buildBackupCards(cards: Card[]): Promise<BackupCard[]> {
     }
     if (Platform.OS === "web")
       throw new Error(`无法备份“${card.name}”的卡面，请重新选择图片。`);
+    const imageUri = resolveOwnedImageUri(card.image);
     const allowed = [
       FileSystem.documentDirectory,
       FileSystem.cacheDirectory,
-    ].some((directory) => directory && card.image!.startsWith(directory));
+    ].some((directory) => directory && imageUri.startsWith(directory));
     if (!allowed) throw new Error(`“${card.name}”的卡面文件位置无效。`);
     try {
-      const info = await FileSystem.getInfoAsync(card.image);
+      const info = await FileSystem.getInfoAsync(imageUri);
       if (!info.exists || info.isDirectory || info.size > MAX_BACKUP_BYTES)
         throw new Error("missing image");
-      const imageData = await FileSystem.readAsStringAsync(card.image, {
+      const imageData = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       const imageMime = /\.png$/i.test(card.image)

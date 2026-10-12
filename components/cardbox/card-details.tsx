@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { CARD_TYPES, type Card } from "../../shared/cardbox";
 import { maskCardNumber } from "./card-face";
 import { useCardboxStyles } from "./styles";
+import { expiryStatus, formatCardNumber } from "../../shared/cardbox-tools";
 
 export function CardDetails({
   card,
@@ -11,6 +12,9 @@ export function CardDetails({
   onToggleSensitive,
   onEdit,
   onDelete,
+  favorite,
+  onFavorite,
+  onCopy,
 }: {
   card: Card;
   showSensitive: boolean;
@@ -18,6 +22,9 @@ export function CardDetails({
   onToggleSensitive: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  favorite: boolean;
+  onFavorite: () => void;
+  onCopy: (field: "number" | "cvv") => void;
 }) {
   const { styles, colors } = useCardboxStyles();
   return (
@@ -47,9 +54,27 @@ export function CardDetails({
           </Text>
         </Pressable>
       </View>
+      <View style={styles.spaced}>
+        <Pressable
+          disabled={disabled}
+          accessibilityLabel={favorite ? "取消常用卡" : "设为常用卡"}
+          onPress={onFavorite}
+          style={styles.iconButton}
+        >
+          <Text style={styles.outlineText}>
+            {favorite ? "★ 常用卡" : "☆ 设为常用"}
+          </Text>
+        </Pressable>
+        <Text style={styles.error}>{expiryStatus(card.expiry)}</Text>
+      </View>
       <View>
         {[
-          ["卡号", showSensitive ? card.number : maskCardNumber(card.number)],
+          [
+            "卡号",
+            showSensitive
+              ? formatCardNumber(card.number)
+              : maskCardNumber(card.number),
+          ],
           ["CVV", showSensitive ? card.cvv || "未填写" : "•••"],
           ["到期", card.expiry || "未填写"],
           ["备注", card.note || "暂无备注"],
@@ -61,6 +86,24 @@ export function CardDetails({
             </Text>
           </View>
         ))}
+      </View>
+      <View style={styles.row}>
+        <Pressable
+          disabled={disabled}
+          accessibilityLabel="验证并复制卡号"
+          style={styles.outline}
+          onPress={() => onCopy("number")}
+        >
+          <Text style={styles.outlineText}>复制卡号</Text>
+        </Pressable>
+        <Pressable
+          disabled={disabled || !card.cvv}
+          accessibilityLabel="验证并复制CVV"
+          style={styles.outline}
+          onPress={() => onCopy("cvv")}
+        >
+          <Text style={styles.outlineText}>复制 CVV</Text>
+        </Pressable>
       </View>
       <View style={styles.row}>
         <Pressable disabled={disabled} style={styles.outline} onPress={onEdit}>

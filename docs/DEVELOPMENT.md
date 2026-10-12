@@ -1,8 +1,10 @@
 # CardBox 开发与交接指南
 
-更新日期：2026-10-11，当前应用版本为 `4.0.0`（Android `versionCode: 8`），正在开发、待用户真机验收封板。作者：xieyanker；仓库：[GitHub](https://github.com/xieyanker/cardbox-mobile)。本轮新增到期时间掩码输入，沿用旧数据格式；已发布 APK 仍为 3.0.2。
+更新日期：2026-10-12，当前应用版本为 `4.0.0`（Android `versionCode: 8`），正在开发、待用户真机验收封板。作者：xieyanker；仓库：[GitHub](https://github.com/xieyanker/cardbox-mobile)。本轮完成问题修复、查找 / 录入改善、备份恢复保护、卡面编辑与隐私功能，沿用旧数据读取；已发布 APK 仍为 3.0.2。
 
 ## 现有资料与分析依据
+
+4.0 新组件为 `card-grid`、`card-sort`、`backup-panel`、`card-image-editor` 与原生 `privacy-guard`；查找 / 合并 / 到期和裁剪几何在 shared 模块，偏好与备份统计使用独立 hooks / lib，恢复点在卡包 repository 队列内写入。完整兼容边界与新存储键见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。运行 `pnpm test:4` 可执行新功能专项浏览器检查；使用匹配项目的 pnpm 9.12.0，浏览器测试只使用独立上下文与虚构卡片。新依赖匹配 SDK 54，原生效果仍需真机验收。
 
 新增这些文件前，项目内未发现 README、独立设计文档或开发指南。已有资料主要是源码、配置、源码注释以及 Git 提交记录。
 

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createCardRepository } from "../lib/cardbox-repository";
+import {
+  createCardRepository,
+  RESTORE_POINT_KEY,
+} from "../lib/cardbox-repository";
 import { CARD_STORAGE_KEY, type Card } from "../shared/cardbox";
 
 const card: Card = {
@@ -33,6 +36,37 @@ function setup(raw: string | null) {
 }
 
 describe("card persistence", () => {
+  it("keeps an encrypted restore point and refuses replacement preparation when preserving it fails", async () => {
+    const entries = new Map([[CARD_STORAGE_KEY, JSON.stringify([card])]]);
+    let fail = false;
+    const repository = createCardRepository({
+      storage: {
+        getItem: async (key) => entries.get(key) ?? null,
+        setItem: async (key, value) => {
+          if (fail && key === RESTORE_POINT_KEY) throw new Error("disk full");
+          entries.set(key, value);
+        },
+      },
+      encrypt: async (value) => `encrypted:${value}`,
+      decrypt: async (value) => value.slice(10),
+    });
+    await repository.createRestorePoint({
+      favorites: [card.id],
+      lastSelectedId: card.id,
+      privateImages: true,
+    });
+    expect(entries.get(RESTORE_POINT_KEY)).toMatch(/^encrypted:/);
+    await repository.replace([]);
+    expect((await repository.readRestorePoint())?.cards).toEqual([card]);
+    expect(
+      (await repository.readRestorePoint())?.preferences?.favorites,
+    ).toEqual([card.id]);
+    fail = true;
+    await expect(repository.createRestorePoint()).rejects.toThrow("disk full");
+    expect(await repository.read()).toEqual([]);
+    expect((await repository.readRestorePoint())?.cards).toEqual([card]);
+  });
+
   it("reads legacy expiry unchanged without writes and retains it when editing another field", async () => {
     const legacy = { ...card, expiry: "07/26" };
     const original = JSON.stringify([legacy]);

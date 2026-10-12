@@ -4,6 +4,13 @@ import {
   parseCards,
   type Card,
 } from "../shared/cardbox";
+import { z } from "zod";
+import { preferenceSchema, type Preferences } from "./cardbox-preferences";
+export const RESTORE_POINT_KEY = "cardbox.restore-point.v1";
+const restorePointSchema = z.object({
+  cards: cardListSchema,
+  preferences: preferenceSchema.optional(),
+});
 
 type RepositoryDependencies = {
   storage: {
@@ -92,6 +99,27 @@ export function createCardRepository({
     load,
     update,
     recover,
+    createRestorePoint: (preferences?: Preferences) => {
+      const operation = queue.then(async () => {
+        await load();
+        await storage.setItem(
+          RESTORE_POINT_KEY,
+          await encrypt(JSON.stringify({ cards, preferences })),
+        );
+      });
+      queue = operation.then(
+        () => undefined,
+        () => undefined,
+      );
+      return operation;
+    },
+    readRestorePoint: async () => {
+      await queue;
+      const raw = await storage.getItem(RESTORE_POINT_KEY);
+      return raw === null
+        ? null
+        : restorePointSchema.parse(JSON.parse(await decrypt(raw)));
+    },
     replace: (next: Card[]) => update(() => next),
     read: async () => {
       await queue;

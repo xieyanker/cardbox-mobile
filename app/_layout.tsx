@@ -9,6 +9,7 @@ import { Platform } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { PasswordService } from "@/components/cardbox/password-service";
+import { PrivacyGuard } from "@/components/cardbox/privacy-guard";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -82,6 +83,7 @@ export default function RootLayout() {
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PasswordService />
+      <PrivacyGuard />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}

@@ -80,5 +80,7 @@ export function useCardboxCards() {
     update,
     recover,
     read: repository.read,
+    createRestorePoint: repository.createRestorePoint,
+    readRestorePoint: repository.readRestorePoint,
   };
 }

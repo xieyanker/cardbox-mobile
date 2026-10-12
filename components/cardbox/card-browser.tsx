@@ -91,6 +91,7 @@ function BrowserCard({
   onSelect,
   onOpen,
   pan,
+  hideImage,
 }: {
   card: Card;
   index: number;
@@ -103,6 +104,7 @@ function BrowserCard({
   onSelect: () => void;
   onOpen: () => void;
   pan: ReturnType<typeof Gesture.Pan>;
+  hideImage: boolean;
 }) {
   const animated = useAnimatedStyle(() => {
     const distance = index - position.value;
@@ -163,7 +165,7 @@ function BrowserCard({
         disabled={disabled}
         onPress={selected ? onOpen : onSelect}
       >
-        <CardFace card={card} />
+        <CardFace card={card} hideImage={hideImage} />
       </GesturePressable>
     </Animated.View>
   );
@@ -177,6 +179,7 @@ export function CardBrowser({
   disabled,
   onSelect,
   onOpen,
+  hideImages = false,
 }: {
   cards: Card[];
   selectedIndex: number;
@@ -184,6 +187,7 @@ export function CardBrowser({
   disabled: boolean;
   onSelect: (id: string) => void;
   onOpen: () => void;
+  hideImages?: boolean;
 }) {
   const { colors, styles } = useCardboxStyles();
   const [size, setSize] = useState({ width: 320, height: 380 });
@@ -262,6 +266,7 @@ export function CardBrowser({
               position={position}
               mode={mode}
               pan={gesture}
+              hideImage={hideImages}
               height={cardHeight}
               top={top}
               disabled={disabled}
