@@ -151,12 +151,12 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
 
 ## 图标与应用信息
 
-<p><img src="../assets/images/icon.png" width="160" alt="CardBox 图标：深蓝色与青绿色卡包，带 CardBox 字样" /> <img src="images/about.png" width="230" alt="关于应用页面，显示 CardBox 图标与版本 4.0.0" /></p>
+<p><img src="../assets/images/icon.png" width="160" alt="CardBox 新图标：深蓝、青绿与米白三张卡片错位叠放" /> <img src="images/about.png" width="230" alt="关于应用页面，显示三卡叠放图标与版本 4.0.0" /></p>
 
-图标以卡包和叠放卡片为主体，包含 **CardBox** 字样。独立 APK 使用此图标；“关于应用”显示同一图标、版本、作者和 GitHub 项目入口。Android 自适应图标、单色主题图标和启动画面已配置，素材与设计说明见 [图标设计](design/ICON.md)。
+4.0 图标采用深蓝、青绿与米白三张卡片错位叠放，去掉卡夹、文字与斜向反光分界，保留统一的上斜角度和柔和质感。“关于应用”、Web 图标与文档使用同一素材；Android 自适应、单色主题图标和启动画面一并更新。原生安装资源需重新构建的 APK 才生效，已发布的 3.0.2 仍使用历史图标；素材与生成方式见 [图标设计](design/ICON.md)。
 
 ## 截图与版本记录
 
-演示图于 2026-10-12 从 `main` 的 4.0.0 页面重新采集，仅在截图时隐藏 Expo 开发刷新浮标，没有改写应用布局或功能。八张卡片通过添加表单建立，类型、常用、搜索、图片编辑、排序与备份均通过实际页面操作展示。用户真机照片和原始设计图按 SHA-256 校验保持原样。采集脚本为 `scripts/capture-cardbox-docs.cjs`，版本、源码提交、视口、文件清单与受保护图片哈希见 [采集记录](images/demo-manifest.json)。
+演示图于 2026-10-13 在 `main` 工作目录接入新图标后重新采集，仅在截图时隐藏 Expo 开发刷新浮标，没有改写应用布局或功能。八张卡片通过添加表单建立，类型、常用、搜索、图片编辑、排序与备份均通过实际页面操作展示。用户真机照片和原始设计图按 SHA-256 校验保持原样。采集脚本为 `scripts/capture-cardbox-docs.cjs`，版本、基线提交、工作目录修改状态、视口、文件清单与受保护图片哈希见 [采集记录](images/demo-manifest.json)。
 
 已发布的 3.0.2 Android APK 已通过 EAS 构建并作为 [3.0.2 Release 附件](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) 发布。构建成功与完整真机验收分别记录，验收进度见 [Android 调试与验收](TESTING.md)。

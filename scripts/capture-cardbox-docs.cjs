@@ -53,6 +53,9 @@ const report = {
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {
     encoding: "utf8",
   }).trim(),
+  sourceWorkingTreeDirty: Boolean(
+    execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim(),
+  ),
   capturedAt: new Date().toISOString(),
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 2,

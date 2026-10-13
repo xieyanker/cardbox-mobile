@@ -711,7 +711,7 @@ export default function HomeScreen() {
           <Image
             source={require("../../assets/images/icon.png")}
             style={{ width: 112, height: 112, borderRadius: 24 }}
-            accessibilityLabel="CardBox 应用图标"
+            accessibilityLabel="CardBox 三卡叠放应用图标"
           />
           <Text style={styles.heading}>CardBox</Text>
           <Text style={styles.text}>版本 {APP_VERSION}</Text>

@@ -31,9 +31,6 @@ const env = {
   // App branding - update these values directly (do not use env vars)
   appName: "CardBox",
   appSlug: "cardbox-mobile",
-  // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
-  // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -45,6 +42,7 @@ const config: ExpoConfig = {
   owner: "xieyanker",
   version: packageJson.version,
   orientation: "portrait",
+  // Shared 4.0 three-card branding: launcher, About, splash and documentation.
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",

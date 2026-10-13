@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/icon.png" width="100" alt="CardBox 应用图标" />
+  <img src="assets/images/icon.png" width="100" alt="CardBox 三卡叠放应用图标：深蓝、青绿和米白" />
 </p>
 
 # CardBox
@@ -29,7 +29,7 @@
   </tr>
 </table>
 
-演示图采集于 2026-10-12，使用 4.0.0 Web 移动视口与虚构卡片，不代表 Android 真机验收。更多页面见[功能与使用说明](docs/FEATURES.md)。
+演示图于 2026-10-13 同步新图标后重新采集，使用 4.0.0 Web 移动视口与虚构卡片，不代表 Android 真机验收。更多页面见[功能与使用说明](docs/FEATURES.md)。
 
 <details>
 <summary>用户提供的 Android 真机照片（原图保留）</summary>

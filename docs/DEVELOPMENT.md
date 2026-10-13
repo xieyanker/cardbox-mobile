@@ -137,3 +137,5 @@ Windows 可开发 Android；iOS 本机编译和模拟器需要 macOS / Xcode。i
 - [EAS 构建设置](https://docs.expo.dev/build/setup/)：云端构建与项目配置。
 - [Android Studio / Emulator](https://docs.expo.dev/workflow/android-studio-emulator/)：本机环境与模拟器。
 - [SDK 54 LocalAuthentication](https://docs.expo.dev/versions/v54.0.0/sdk/local-authentication/)：系统验证与 Face ID 限制。
+
+  4.0 三卡图标已接入应用、Web、Android 自适应 / 单色图标和启动画面；资源位置、生成命令和安全范围见[图标设计](design/ICON.md)。更新图稿后先执行 `node scripts/generate-brand-assets.cjs`，再检查关于页并重采集文档演示图。安装图标与原生启动画面需要重新构建 APK，Expo Go 的桌面图标不会改变。
