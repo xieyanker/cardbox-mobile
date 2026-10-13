@@ -1,118 +1,65 @@
-# CardBox 开发与交接指南
+# CardBox 开发指南
 
-更新日期：2026-10-12，当前应用版本为 `4.0.0`（Android `versionCode: 8`），正在开发、待用户真机验收封板。作者：xieyanker；仓库：[GitHub](https://github.com/xieyanker/cardbox-mobile)。本轮完成问题修复、查找 / 录入改善、备份恢复保护、卡面编辑与隐私功能，沿用旧数据读取；已发布 APK 仍为 3.0.2。
+[项目首页](../README.md) · [文档目录](README.md) · [手机调试与验收](TESTING.md)
 
-## 现有资料与分析依据
+更新日期：2026-10-13。当前 **4.0.0**（Android 构建编号 8），已约定功能开发完成，待用户真机验收。已发布 APK 为 3.0.2。历史提交与旧验证结果见[归档](history/VALIDATION_2_3.md)，本轮实现证据见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。
 
-4.0 流程拆分：`use-cardbox-editor` 管理草稿、选择图片和保存 / 删除；`use-cardbox-backup` 管理备份密码、导入导出和恢复点；`use-cardbox-navigation` 管理页面 / 选卡 / 敏感信息状态，`use-cardbox-back-navigation` 统一返回与未保存确认；`use-cardbox-operations` 统一认证、忙碌互斥、确认框与错误提示；`use-cardbox-storage-management` 管理存储清理。`cardbox-image-maintenance` 共享提交后的图片清理策略。主页面负责组合这些模块与界面，不再承载上述流程状态机；存储键、数据格式与密码参数保持兼容。
+## 准备环境
 
-4.0 新组件为 `card-grid`、`card-sort`、`backup-panel`、`card-image-editor` 与原生 `privacy-guard`；查找 / 合并 / 到期和裁剪几何在 shared 模块，偏好与备份统计使用独立 hooks / lib，恢复点在卡包 repository 队列内写入。完整兼容边界与新存储键见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。运行 `pnpm test:4` 可执行新功能专项浏览器检查；使用匹配项目的 pnpm 9.12.0，浏览器测试只使用独立上下文与虚构卡片。新依赖匹配 SDK 54，原生效果仍需真机验收。
-
-新增这些文件前，项目内未发现 README、独立设计文档或开发指南。已有资料主要是源码、配置、源码注释以及 Git 提交记录。
-
-- 功能与架构：依据 `app/(tabs)/index.tsx`、`lib/cardbox-security.ts`、`server/routers.ts` 和 `drizzle/schema.ts`。
-- 技术栈与运行方式：依据 `package.json`、`app.config.ts`、`eas.json` 和其他配置。
-- 验证结果：依据实际执行的 TypeScript、ESLint、Vitest 和排序回调模拟。
-- 设计目标：依据用户提供的[原型图与设计说明](design/README.md)。
-
-## Git 维护状态
-
-本地存在 `.git` 仓库。首次分析时有 11 条提交，`main` 为 `05c9feb`；补充文档随后提交为 `9bed7fd`。首轮代码开发位于 `codex/cardbox-development` 分支。远程地址为：
-
-```text
-https://github.com/xieyanker/cardbox-mobile.git
-```
-
-首轮开发与浏览器验证已经推送并合并到 `main`，提交为 `a23c7b9`。2026-10-11 用户确认 2.0.0 全部验收完成，并授权将本轮修复及文档提交、推送至 `main`；后续优化单独迭代。具体提交与远端状态以 Git 记录为准。
-
-应用版本统一在 `package.json` 定义，`app.config.ts` 和关于页读取同一版本。2.0.0 对应 Android `versionCode: 4`；应用版本与备份格式的 v2 / v3 编号互不影响。
-
-2.0.0 增加“备份管理 → 导出备份 / 导入备份”二级菜单与作者、GitHub 说明，调整标题避免 Android 字形边缘被裁切。备份密码派生使用 `@noble/hashes` 的 HMAC-SHA256，按原有 PBKDF2 参数（120,000 次、v2 32 字节 / v3 64 字节）计算，并通过定时器让出界面线程；使用独立 Node.js PBKDF2 结果及旧算法备份验证兼容性。Android 导出等待系统选择器返回前台后继续；写入后回读校验，失败清理本次创建的不完整文件，取消或失败有明确提示。USB 连接方法与真机复测顺序见[验收文档](TESTING.md)。
-
-本轮检查：TypeScript / ESLint 通过、45 条业务测试通过、21 项浏览器回归通过；Android 2.0.0 Metro 开发代码包已在手机请求后成功生成。用户确认真机导出提示成功，且所选目录中存在非空 `.cardbox` 文件，随后确认本版本全部验收完成。为避免与手机服务冲突，浏览器可使用独立的 8082 端口，在测试终端设置 `$env:CARDBOX_TEST_URL = 'http://localhost:8082/'` 后运行 `pnpm test:web`。
-
-3.0.0 按用户要求直接在 `main` 完成四个阶段并逐次推送：图标 `5f8011f`、菜单 `13b716a`、浏览模式 `6676c1b`、备份性能 `289f775`。当前检查为 TypeScript 通过、ESLint 0 错误 / 7 条原模板警告、54 条业务测试通过（1 条模板测试跳过）、21 项 Web 回归通过、三模式浏览操作与视觉检查通过、Android Metro 开发包及 Hermes 字节码生成通过。功能和待验收项目见 [3.0 进度](CARDBOX_3.0_REQUIREMENTS.md)，版本变更见 [CHANGELOG](../CHANGELOG.md)。
-
-3.0.0 新导出为 `cardbox-secure-v4`，保持 120,000 轮密码派生并提前验证密码；继续读取 v2 / v3。旧 2.0.0 不能读取新 v4 文件。3.0.1 在 Android 真机复测中确认 Hermes JS 单块派生需 29.942 秒，改用离线本机 WebCrypto 后为 44 ms；约 0.88 MB 合成数据加解密约 2.7 秒、错误密码 47 ms，不包含系统验证和文件提供器 I/O。性能记录与复现脚本见 [备份性能记录](performance/BACKUP_3.0.md)。顺序设置提交 `fd4c143`，密码加速提交 `a5c0b41`；71 条业务测试、21 项 Web 回归和模式排序 / 重启检查通过。未生成新 APK。
-
-设计文档和原型图纳入 Git 版本维护。按用户 2026-10-11 的要求，后续开发直接在 `main` 分支进行，分批提交可审查的修改，再运行必要检查并在设备上验收。
-
-版本号由 `package.json` 的 `version` 统一管理；`app.config.ts` 与关于页从中读取，无需增加独立的版本号文件。用户宣布开发新版本时就更新代码及当前文档版本号，同时递增 Android 的 `versionCode`，不等最终封板。用户于 2026-10-11 明确要求：后续功能先提交、推送 `main`，只有用户亲自验证通过并明确授权后才创建封板 tag。届时确认 `main` 的发布提交、应用版本和构建编号，再在该提交上创建与版本号相同的注释标签并推送。历史版本记录、截图说明和已发布下载链接保持真实。`2.0.0` 标签应指向已验收的 `7100e97` 发布提交；之后的文档变更不属于该版本标签。
-
-4.0 开发与验收记录见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。所有后续升级必须检查旧版本地数据、加密格式和备份读取兼容性；本轮到期时间掩码只改变输入显示，保留空字符串 / `MM/YY` 存储，不增加迁移或自动改写。
-
-仓库通过 `.gitattributes` 统一文本文件的提交与检出换行为 LF，`.editorconfig` 约定 UTF-8 编码、LF 换行和文件末尾换行。原型 PNG 等二进制文件保持原始字节。
-
-## 当前电脑环境
-
-以下仅代表当前开发会话及常见安装位置的检测结果；工具可能安装在其他位置，或尚未加入 PATH。
-
-| 工具                         | 检测结果                                      | 用途                                 |
-| ---------------------------- | --------------------------------------------- | ------------------------------------ |
-| Git                          | 可用，`2.54.0.windows.1`                      | 查看历史、分支与提交                 |
-| Node.js                      | 可用，`v24.19.0`，来自当前应用提供的运行时    | 客户端、服务端、检查与构建命令       |
-| pnpm                         | 当前会话有包装入口；项目声明 `pnpm@9.12.0`    | 安装依赖与执行脚本                   |
-| 项目依赖                     | 已存在 `node_modules`                         | 已支持类型检查、Lint 和 Vitest 启动  |
-| Java / javac                 | PATH 未找到，`JAVA_HOME` 未设置               | 本机 Android 原生编译                |
-| Android Studio / Android SDK | 已检查的常见位置未发现；SDK 环境变量未设置    | 本机编译、模拟器和调试               |
-| adb / emulator / sdkmanager  | PATH 未找到                                   | 连接 Android 设备、管理 SDK 和模拟器 |
-| EAS CLI                      | PATH 未找到全局命令                           | 可按需通过包管理器临时运行           |
-| VS Code                      | PATH 未找到 `code` 命令，不能据此判断是否安装 | 可选编辑器，当前会话编辑代码不依赖它 |
-
-若要在普通终端独立开发，应确认 Node.js 和与项目匹配的 pnpm 在该终端可用，不能假定当前应用提供的运行时已安装为系统工具。
-
-## 运行与检查
-
-在项目根目录执行。首轮开发已启动本机 Metro 并检查 Android / Web 开发代码包，没有执行 APK 编译或 EAS 云构建。
-
-### 依赖
-
-项目声明的包管理器为 `pnpm@9.12.0`。在已有对应 pnpm 的终端中运行：
+项目使用 Expo SDK 54、React Native、TypeScript，包管理器固定为 **pnpm 9.12.0**。在自己的终端确认 Node.js 与匹配的 pnpm 可用，再进入项目根目录安装依赖：
 
 ```powershell
 pnpm install --frozen-lockfile
 ```
 
-### Web 界面预览
+本地卡片功能不需要启动模板后端、登录账号或配置 MySQL。使用 Expo Go 调试不需要先编译 APK；本机原生编译才需要 Android SDK / JDK 等工具。
+
+## 运行预览
+
+### 手机：单窗口 USB 调试
+
+当前电脑已准备 ADB，手机安装 SDK 54 对应的 Expo Go、连接数据线并授权 USB 调试后，按[单窗口启动流程](TESTING.md#usb-调试一个窗口即可)操作。那里统一维护启动命令和故障排查，不需要为普通手机调试另开服务端窗口。
+
+Expo Go 与独立 APK 的卡包分别保存。涉及新增原生模块时需检查 Expo Go 支持情况，再决定是否使用专用开发包；当前没有配置 `expo-dev-client` 或 development profile。
+
+### Web：界面与交互预览
 
 ```powershell
-pnpm dev:metro
+node node_modules/expo/bin/cli start --web --port 8084 --max-workers 2
 ```
 
-`dev:metro` 已使用显式端口 8081，`start` 通过 cross-env 设置环境变量，支持 Windows 与 Linux。需要其他端口时可运行 `pnpm exec expo start --web --port 其他端口`。
+Web 验证统一使用 8084，保留终端运行。`pnpm dev:metro` 是已有的 8081 快捷入口；使用其他地址时给测试脚本设置 `CARDBOX_TEST_URL`。Web 不能替代移动端身份验证、加密密钥存储和原生保护验收。
 
-Web 只适合布局和普通交互检查。Web 不执行原生身份验证或后台锁定，使用每个浏览器生成的随机密钥；该密钥与数据同处浏览器存储，不能作为移动端安全验收环境。旧固定预览密钥仅用于兼容读取旧数据。
+## 自动检查
 
-### 手机预览
-
-这台电脑优先使用 USB：手机安装 SDK 54 Expo Go，开启 USB 调试，连接数据线并允许电脑调试。只打开一个 PowerShell 窗口，执行：
-
-```powershell
-cd F:\trae\cardbox-mobile
-$env:PATH = "$PWD\.expo\android-tools\platform-tools;$env:PATH"
-node node_modules/expo/bin/cli start --go --localhost --android --port 8081 --max-workers 2
-```
-
-Expo 自动建立 USB 端口转发并打开手机上的 Expo Go，不需要第二个窗口。保持此窗口运行，结束时按 `Ctrl+C`；已有服务时先停止再启动。当前电脑已有上述 ADB 目录，换电脑需准备 Platform Tools。详细说明及折叠的故障排查见[连接手机](TESTING.md#连接手机)。
-
-需要无线连接时，手机与电脑连接同一局域网，运行 `pnpm dev:mobile`，用 Expo Go 扫描二维码即可。
-
-Android 从 [SDK 54 Expo Go 下载页](https://expo.dev/go?sdkVersion=54&platform=android&device=true)安装匹配客户端；不要默认当前商店最新版兼容旧 SDK。开发服务与 APK 编译是不同步骤，Expo Go 与 Fast Refresh 调试不消耗 EAS 云构建额度。
-
-当前约定先在 Android Expo Go 调试，普通界面和 JavaScript 逻辑变更无需重复编译。遇到 Expo Go 不支持的原生功能时，再考虑 development build。当前没有添加 `expo-dev-client` 或 development profile；iOS Face ID 无法在 Expo Go 中完成验证。任何 EAS 云构建都需用户明确确认。
-
-### 类型、Lint 和测试
+不需要启动应用服务的检查：
 
 ```powershell
 pnpm check
 pnpm lint
 pnpm test
-pnpm test:sort
 ```
 
-`test:sort` 需要正在运行的 Web 开发服务，默认地址为 `http://localhost:8084/`，可用 `CARDBOX_TEST_URL` 指定。它使用独立浏览器上下文和 80 张虚构卡片，检查跨屏 / 取消 / 失败 / 持久化及触屏操作，不访问手机卡包。也可直接运行 `node scripts/test-cardbox-sort.cjs`。排序手势挂在列表外层，`cardbox-sort-drag` 负责边缘速度、滚动边界和仅松手提交一次；浮动预览使虚拟列表回收原行时手势保持有效。
+浏览器回归需要已启动的 Web 服务和本机 Google Chrome；在另一个终端明确指定服务地址后执行。这第二个窗口用于自动测试，不是手机调试的必要步骤。
 
-当前会话的 pnpm 包装入口可能自动安装依赖；首轮开发使用项目指定的 pnpm 9.12.0 维护锁文件，禁用依赖安装脚本。实际检查也可使用已安装的本地工具入口：
+```powershell
+$env:CARDBOX_TEST_URL = 'http://localhost:8084/'
+pnpm test:web
+pnpm test:4
+pnpm test:sort
+pnpm test:browse
+```
+
+| 脚本          | 用途                                                    |
+| ------------- | ------------------------------------------------------- |
+| `test:web`    | 添加、编辑、排序、导入导出及基本布局回归。              |
+| `test:4`      | 4.0 新功能、旧数据兼容和关键失败场景。                  |
+| `test:sort`   | 80 张虚构卡片跨屏拖动、边缘滚动、取消、失败及触屏操作。 |
+| `test:browse` | 钱包、堆叠、聚焦的手势、边界、记忆与主题。              |
+
+这些脚本使用隔离浏览器上下文和虚构卡片，产物保存在被 Git 忽略的 `.expo/`。最近代码验证基线见[验收文档](TESTING.md#自动检查基线)，每轮按修改范围运行适用检查并记录结果。
+
+若环境中的 pnpm 包装入口异常，已安装依赖可直接调用：
 
 ```powershell
 node node_modules/typescript/bin/tsc --noEmit
@@ -120,71 +67,73 @@ node node_modules/eslint/bin/eslint.js .
 node node_modules/vitest/vitest.mjs run
 ```
 
+## 代码结构
+
+| 位置                                                                   | 职责                                                       |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `app/(tabs)/index.tsx`                                                 | 组合业务 hooks 与页面界面。                                |
+| `components/cardbox/`                                                  | 卡面、网格、排序、备份面板、图片编辑及隐私保护组件。       |
+| `hooks/use-cardbox-editor.ts`                                          | 草稿、离开确认、选图、保存和删除。                         |
+| `hooks/use-cardbox-backup.ts`                                          | 导入导出、预览、密码临时状态与恢复点流程。                 |
+| `hooks/use-cardbox-navigation.ts`、`use-cardbox-back-navigation.ts`    | 页面、选卡、敏感信息状态和返回策略。                       |
+| `hooks/use-cardbox-operations.ts`、`use-cardbox-storage-management.ts` | 验证与操作互斥、确认提示、存储清理。                       |
+| `lib/`                                                                 | 卡包持久化、加密、图片文件、偏好、备份统计和排序拖动控制。 |
+| `shared/`                                                              | 输入格式、校验、查找 / 合并 / 到期状态、颜色与裁剪几何。   |
+| `tests/`、`scripts/`                                                   | 单元回归、浏览器操作、性能测量与截图采集。                 |
+| `server/`、`drizzle/`                                                  | 原模板后端；当前本地卡包业务不依赖它。                     |
+
+卡片写入成功后才更新界面；初始化读取不改写旧数据，无法读取时保留原始数据。新增偏好使用独立存储键；图片清理保留当前卡包、草稿与恢复点引用。具体键名、备份格式和兼容边界见[4.0 兼容说明](CARDBOX_4.0_REQUIREMENTS.md#旧数据兼容与实现边界)。
+
 ## 更新文档演示图
 
-先启动本地 Web 服务（默认采集地址 `http://localhost:8084/`），运行 `pnpm docs:images`，也可直接执行 `node scripts/capture-cardbox-docs.cjs`。其他端口通过 `CARDBOX_TEST_URL` 指定。脚本只使用隔离浏览器中的虚构卡片，重新采集 `docs/images/` 中约定的演示 PNG，输出 `demo-manifest.json`；不访问手机或现有浏览器卡包。用户真机照片与原始设计图按 SHA-256 校验保护，历史设计截图保留。
+启动上面的 Web 服务后，在另一终端执行：
 
-## Android 构建方式
+```powershell
+$env:CARDBOX_TEST_URL = 'http://localhost:8084/'
+node scripts/capture-cardbox-docs.cjs
+```
 
-### 云端构建：不要求电脑先安装 Android Studio
+`pnpm docs:images` 是相同入口。脚本从实际页面采集 `docs/images/` 中约定的演示 PNG，并输出[采集记录](images/demo-manifest.json)。只使用独立上下文里的虚构卡片；用户真机照片和原始设计图按 SHA-256 校验保护，历史设计截图保留。更新后检查图片与文档引用，Web 截图不增加 Android 验收结论。
 
-已有 `eas.json` 的 `preview` 配置会生成内部安装用 APK。`app.config.ts` 已关联用户确认的 Expo 项目 `@xieyanker/cardbox-mobile`，Project ID 为 `9c5810b4-c04a-44b3-8ef3-9b10b00b859b`。`cli.appVersionSource` 使用 `local`，继续读取仓库中的应用版本与 Android 构建编号；Android 构建镜像显式使用 `auto`，由 EAS 按项目 SDK 选择。构建仍需要 Expo 账号、对应项目权限和 Android 签名配置。
+## Android 构建
 
-2026-10-11 用户从 GitHub 网页发起的构建在配置阶段因缺少 `extra.eas.projectId` 失败。本次仅修复构建关联，按用户要求提交至 `main`，保留版本 `3.0.2` / Android 构建编号 7，不新建或移动标签。网页重试时 Git ref 使用 `main`，平台选择 Android，EAS Build profile 填 `preview`，Environment 保持 Default，不启用自动提交商店；原 `3.0.2` 标签不包含本次配置修复。项目 ID 的解析检查不等于 APK 编译通过。
+普通 JavaScript 与界面修改先通过 Expo Go / Fast Refresh 调试。4.0 尚未生成 APK；构建和真机验收分别记录，任何 EAS 云构建需用户明确确认后执行。
 
-在配置完成后，可运行：
+### EAS 云构建
+
+`eas.json` 的 `preview` 配置生成内部安装用 APK。`app.config.ts` 已关联 `@xieyanker/cardbox-mobile`，Project ID 为 `9c5810b4-c04a-44b3-8ef3-9b10b00b859b`；`cli.appVersionSource: local` 使用仓库版本与构建编号。需要 Expo 项目权限与正确的 Android 签名，覆盖升级必须沿用原包名和签名。
+
+获得构建授权后执行：
 
 ```powershell
 pnpm dlx eas-cli@latest login
 pnpm dlx eas-cli@latest build --platform android --profile preview
 ```
 
-这些步骤会使用外部构建服务并可能消耗额度，只有用户明确确认云构建后才执行。不要把当前 preview APK 配置理解为已经有可安装包，也不要把 preview 构建当作已配置好的 development build。
+从 EAS 网页发起时，Git ref 选择本次待构建提交所在的 `main`，平台 Android，profile 填 `preview`，Environment 保持 Default。此配置未启用自动提交商店，也不是 development build。
 
-### 本机编译与模拟器
+### 本机编译
 
-需要 Android Studio、Android SDK / Platform Tools、兼容的 JDK，以及 `JAVA_HOME`、`ANDROID_HOME` 和 PATH 配置。Expo 官方 Windows 指南列出 JDK 17；实际 SDK 与构建工具版本应与本项目 SDK 54 生成的原生配置一致。
+准备 Android Studio、Android SDK / Platform Tools、兼容项目 SDK 54 的 JDK，以及 `JAVA_HOME`、`ANDROID_HOME` 和 PATH。随后运行 `pnpm exec expo run:android --device`。已有 `pnpm android` 只启动 Expo 并打开客户端，不是 APK 编译命令。
 
-准备好环境后，通过 `pnpm exec expo run:android` 本机编译；连接已启用 USB 调试的手机时可加 `--device`。已有 `pnpm android` 只是启动 Expo 并打开 Android 客户端，不等于编译 APK。
+Windows 可开发 Android；iOS 本机编译和模拟器需要 macOS / Xcode。iOS Face ID 不能用 Expo Go 完成验收。
 
-Windows 可以进行 Android 原生开发。iOS 本机编译与模拟器需要 macOS 和 Xcode；可从 Windows 使用 EAS 云端构建，但仍需要相应的 Apple 签名和设备测试条件。
+## 版本与提交约定
 
-当前本地卡片业务不依赖 MySQL。只有继续开发模板中的账号 / 后端功能时，才需要配置数据库、OAuth 和相关环境变量。
+- 直接在 `main` 分阶段开发、检查、提交和推送。
+- 用户宣布开始新版本时，立即更新 `package.json` 版本、`app.config.ts` Android 构建编号及当前文档；关于页和 Expo 配置读取统一版本。历史记录与已发布下载链接保持真实。
+- 用户亲自验收通过并明确要求封板后，才创建 / 推送发布 tag；自动测试不能代替用户确认，不移动已有 tag。
+- 保持旧本地卡包、加密数据、图片和备份可读取；到期时间仍保存为空或 `MM/YY`，掩码只用于显示。
+- 文本文件使用 UTF-8 / LF，遵循 `.editorconfig` 与 `.gitattributes`；原始图片保持字节不变。
 
-## 已完成与未完成的验证
-
-| 检查                       | 结果                                                                       |
-| -------------------------- | -------------------------------------------------------------------------- |
-| TypeScript                 | 通过                                                                       |
-| ESLint                     | 3.0.1 检查通过，无错误；7 条已有模板警告                                   |
-| Vitest                     | 9 个 CardBox 测试文件、71 条测试通过；原模板 1 条跳过                      |
-| 排序                       | 已改为按卡片 ID 移动最新数据，连续移动回归测试通过                         |
-| 原型图片复制               | 源文件与归档文件 SHA-256 一致                                              |
-| Android / Web Metro 代码包 | 均成功生成；Android 3.0 开发包 / Hermes 字节码生成通过                      |
-| Web 交互 / 视觉验收        | 21 项隔离 Chrome 回归及三种新模式操作检查通过，已检查浅色 / 深色截图       |
-| Android 真机功能验收       | 3.0.1 用户认可备份提速；模式顺序、动画及安装图标尚无逐项验收反馈           |
-| APK 构建与安装             | 3.0.2 的 EAS 构建已成功，APK 已上传 GitHub Releases；完整安装验收待反馈     |
-| GitHub 远端访问与推送      | 已通过 HTTPS 登录并完成首轮推送、合并；本轮按用户授权提交至 main           |
-
-类型检查和 Lint 通过不证明保存、加密、备份及锁定正确；需要有针对性的测试和真机验证。
-
-## 开发顺序与当前进度
-
-1. 已实现存储修复：初始化只读取；失败保留原始数据；写入排队；写入成功后更新界面；设备密钥初始化使用单次共享请求。明确确认备份恢复后，先另存无法读取的原始数据。
-2. 已统一认证入口：原生冷启动、敏感信息、编辑、删除、导入、导出和安全设置；后台遮挡、超时锁定；所有业务浮层处于锁定门禁之后。用户已确认本版本 Android 功能验收完成。
-3. 已修复核心交互：受控编辑草稿、图片确认与持久保存、按 ID 排序、保存后选中新卡片。加密随机数改用 Expo Crypto 的原生异步接口，避免 CryptoJS 在 Hermes 中自行寻找随机数来源。
-4. 已对照原型调整：空状态、卡片类型、独立编辑 / 排序 / 备份页、浮层菜单、关于和系统主题。月份选择器与交互裁剪尚未增加，作为后续优化；Web 检查与用户 Android 验收已完成。
-5. 已拆分存储、认证、校验、图片服务和界面组件；保留既有模板服务端，卡片业务仍无需后端账号或 MySQL。
-6. 已添加关键回归测试：本地完整性校验、v3 备份完整性校验、旧格式兼容、图片恢复失败清理、连续排序、锁定和错误恢复。用户整体验收结果与后续回归清单记录在验收文档。
-7. 用户已验收基线为 2.0.0；3.0.0 的图标、菜单、三种浏览模式、备份性能及提前密码校验代码与自动检查完成并分批推送至 `main`。下一步为 Android 真机验收，详见需求进度；需要安装包时再决定构建方式，不得为了普通代码修改频繁运行 EAS。
-8. 3.0.1 已按真机反馈增加默认模式顺序和配置，修复 Hermes 密码派生性能瓶颈；用户复测后表示“这次可以了，很快”，认可备份提速。保留已有版本标签，继续在 main 分阶段提交；其余真机项目按验收清单跟进。
-
-本地新格式保护卡片字段；卡面文件位于应用私有目录，未单独加密。导出备份统一加密字段和图片。首次读取兼容旧格式，只有正常修改时改写为新加密格式。3.0.0 新备份为 `cardbox-secure-v4`，同时兼容原有 v2 / v3 备份读取。
+完整约束见 [AGENTS.md](../AGENTS.md)，文档分工见[文档目录](README.md#文档维护约定)。
 
 ## 官方参考
 
-- [Expo 环境准备](https://docs.expo.dev/get-started/set-up-your-environment/)
-- [Development builds](https://docs.expo.dev/develop/development-builds/introduction/)
-- [EAS 构建设置](https://docs.expo.dev/build/setup/)
-- [Android Studio / Emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [SDK 54 LocalAuthentication：Face ID 限制](https://docs.expo.dev/versions/v54.0.0/sdk/local-authentication/)
+- [Expo 环境准备](https://docs.expo.dev/get-started/set-up-your-environment/)：开发环境配置。
+- [SDK 54 Expo Go](https://expo.dev/go?sdkVersion=54&platform=android&device=true)：匹配项目 SDK 的 Android 客户端。
+- [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)：USB 调试所需 ADB。
+- [Development builds](https://docs.expo.dev/develop/development-builds/introduction/)：专用开发包的适用场景。
+- [EAS 构建设置](https://docs.expo.dev/build/setup/)：云端构建与项目配置。
+- [Android Studio / Emulator](https://docs.expo.dev/workflow/android-studio-emulator/)：本机环境与模拟器。
+- [SDK 54 LocalAuthentication](https://docs.expo.dev/versions/v54.0.0/sdk/local-authentication/)：系统验证与 Face ID 限制。
