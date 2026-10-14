@@ -47,7 +47,7 @@ export default function HomeScreen() {
   const storage = useCardboxCards();
   const access = useCardboxAccess();
   const browse = useCardboxBrowse();
-  const preferences = useCardboxPreferences();
+  const preferences = useCardboxPreferences(storage);
   const operations = useCardboxOperations(access, storage.busy);
   const navigation = useCardboxNavigation({
     storage,
@@ -55,7 +55,13 @@ export default function HomeScreen() {
     preferences,
     operations,
   });
-  const editor = useCardboxEditor({ storage, access, operations, navigation });
+  const editor = useCardboxEditor({
+    storage,
+    access,
+    operations,
+    navigation,
+    preferences,
+  });
   const backup = useCardboxBackup({
     storage,
     access,

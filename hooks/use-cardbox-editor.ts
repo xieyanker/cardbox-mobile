@@ -12,17 +12,20 @@ import type { useCardboxCards } from "./use-cardbox-cards";
 import type { useCardboxAccess } from "./use-cardbox-access";
 import type { CardboxOperations } from "./use-cardbox-operations";
 import type { CardboxNavigation } from "./use-cardbox-navigation";
+import type { useCardboxPreferences } from "./use-cardbox-preferences";
 
 export function useCardboxEditor({
   storage,
   access,
   operations,
   navigation,
+  preferences,
 }: {
   storage: ReturnType<typeof useCardboxCards>;
   access: ReturnType<typeof useCardboxAccess>;
   operations: CardboxOperations;
   navigation: CardboxNavigation;
+  preferences: ReturnType<typeof useCardboxPreferences>;
 }) {
   const {
     ensureAccessible,
@@ -185,6 +188,11 @@ export function useCardboxEditor({
     const next = await storage.update((previous) =>
       previous.filter((card) => card.id !== current.id),
     );
+    await preferences
+      .update((value) => value)
+      .catch(() => {
+        notify("卡片已删除", "常用卡设置清理失败，下次保存设置时会重试。");
+      });
     await cleanupPreviousImages([current], next);
     setSelectedId(next[Math.min(selectedIndex, next.length - 1)]?.id ?? null);
     setRevealed(null);

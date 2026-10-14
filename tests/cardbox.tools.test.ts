@@ -5,7 +5,11 @@ import {
   mergeCards,
   moveCardTo,
 } from "../shared/cardbox-tools";
-import { createPreferenceRepository } from "../lib/cardbox-preferences";
+import {
+  createPreferenceRepository,
+  reconcilePreferences,
+  restorePreferences,
+} from "../lib/cardbox-preferences";
 import type { Card } from "../shared/cardbox";
 import { cropGeometry } from "../shared/cardbox-crop";
 import {
@@ -23,6 +27,36 @@ const card: Card = {
   type: "debit",
 };
 describe("card tools and new independent preferences", () => {
+  it("keeps privacy enabled when restoring old settings and removes dangling IDs", () => {
+    const current = {
+      favorites: ["one"],
+      lastSelectedId: "one",
+      privateImages: true,
+    };
+    const saved = {
+      favorites: ["missing", "one", "one"],
+      lastSelectedId: "missing",
+      privateImages: false,
+    };
+    expect(restorePreferences(current, saved, [card])).toEqual({ ...current, lastSelectedId: null });
+  });
+  it("allows a new favorite after 1000 deleted favorites and does not mutate input", async () => {
+    const stale = {
+      favorites: Array.from({ length: 1000 }, (_, i) => `deleted-${i}`),
+      lastSelectedId: null,
+      privateImages: false,
+    };
+    const repo = createPreferenceRepository({
+      getItem: async () => JSON.stringify(stale),
+      setItem: async () => undefined,
+    });
+    const next = await repo.update((value) => ({
+      ...reconcilePreferences(value, [card]),
+      favorites: [card.id],
+    }));
+    expect(next.favorites).toEqual([card.id]);
+    expect(stale.favorites).toHaveLength(1000);
+  });
   it("bounds crop geometry while zooming and moving past the image edges", () => {
     for (const [width, height] of [
       [400, 1000],

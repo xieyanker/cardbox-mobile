@@ -7,6 +7,7 @@ import {
   type BackupCard,
   type Card,
 } from "../shared/cardbox";
+import { assertBackupCapacity, utf8Bytes } from "../shared/cardbox-backup-size";
 
 function imageDirectory() {
   if (!FileSystem.documentDirectory) throw new Error("应用文件目录不可用。");
@@ -141,7 +142,46 @@ export async function removeUnusedImages(references: (string | undefined)[]) {
 export async function buildBackupCards(
   cards: Card[],
   includeImages = true,
+  extraBytes = 0,
 ): Promise<BackupCard[]> {
+  // Inspect metadata first: do not load images that cannot fit in the encrypted file.
+  let estimated = extraBytes + 64;
+  const baseSizes = cards.map(
+    ({ image: _image, ...fields }) => utf8Bytes(JSON.stringify(fields)) + 1,
+  );
+  estimated += baseSizes.reduce((total, size) => total + size, 0);
+  assertBackupCapacity(estimated);
+  if (includeImages)
+    await mapFiles(cards, async (card) => {
+      if (!card.image) return;
+      let bytes: number;
+      if (/^data:image\/(jpeg|png|webp);base64,/.test(card.image)) {
+        bytes = card.image.length - card.image.indexOf(",") - 1;
+      } else {
+        const uri = resolveOwnedImageUri(card.image);
+        if (
+          Platform.OS === "web" ||
+          ![FileSystem.documentDirectory, FileSystem.cacheDirectory].some(
+            (dir) => dir && uri.startsWith(dir),
+          )
+        )
+          throw new Error(`无法备份“${card.name}”的卡面，请重新选择图片。`);
+        const info = await FileSystem.getInfoAsync(uri);
+        if (!info.exists || info.isDirectory)
+          throw new Error(
+            `“${card.name}”的卡面无法读取，备份未生成。请先重新选择卡面。`,
+          );
+        bytes = Math.ceil(info.size / 3) * 4;
+      }
+      estimated += bytes + 80;
+      assertBackupCapacity(estimated);
+    });
+  let actual =
+    extraBytes + 64 + baseSizes.reduce((total, size) => total + size, 0);
+  const accountImage = (size: number) => {
+    actual += size + 80;
+    assertBackupCapacity(actual);
+  };
   const backup = await mapFiles(cards, async (card): Promise<BackupCard> => {
     if (!includeImages) return { ...card, image: undefined };
     if (!card.image) return card;
@@ -150,6 +190,7 @@ export async function buildBackupCards(
         card.image,
       );
     if (dataImage) {
+      accountImage(dataImage[2].length);
       return {
         ...card,
         image: undefined,
@@ -165,24 +206,26 @@ export async function buildBackupCards(
       FileSystem.cacheDirectory,
     ].some((directory) => directory && imageUri.startsWith(directory));
     if (!allowed) throw new Error(`“${card.name}”的卡面文件位置无效。`);
+    let imageData: string;
     try {
       const info = await FileSystem.getInfoAsync(imageUri);
       if (!info.exists || info.isDirectory || info.size > MAX_BACKUP_BYTES)
         throw new Error("missing image");
-      const imageData = await FileSystem.readAsStringAsync(imageUri, {
+      imageData = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      const imageMime = /\.png$/i.test(card.image)
-        ? "image/png"
-        : /\.webp$/i.test(card.image)
-          ? "image/webp"
-          : "image/jpeg";
-      return { ...card, image: undefined, imageData, imageMime };
     } catch {
       throw new Error(
         `“${card.name}”的卡面无法读取，备份未生成。请先重新选择卡面。`,
       );
     }
+    accountImage(imageData.length);
+    const imageMime = /\.png$/i.test(card.image)
+      ? "image/png"
+      : /\.webp$/i.test(card.image)
+        ? "image/webp"
+        : "image/jpeg";
+    return { ...card, image: undefined, imageData, imageMime };
   });
   return backupSchema.parse({ version: 3, cards: backup }).cards;
 }

@@ -5,6 +5,7 @@ import { derivePasswordBytes } from "./cardbox-pbkdf2";
 import { Platform } from "react-native";
 import { z } from "zod";
 import { MAX_BACKUP_BYTES } from "../shared/cardbox";
+import { assertBackupCapacity, utf8Bytes } from "../shared/cardbox-backup-size";
 
 const DEVICE_KEY = "cardbox.device.key.v1";
 const ITERATIONS = 120_000;
@@ -190,10 +191,8 @@ async function backupKeysV4(password: string, salt: string) {
 
 export async function encryptBackup(value: string, password: string) {
   if (!password.trim()) throw new Error("请输入备份密码。");
+  assertBackupCapacity(utf8Bytes(value));
   const plaintext = CryptoJS.enc.Utf8.parse(value);
-  const ciphertextBytes = (Math.floor(plaintext.sigBytes / 16) + 1) * 16;
-  if (Math.ceil(ciphertextBytes / 3) * 4 + 512 > MAX_BACKUP_BYTES)
-    throw new Error("备份超过 50 MB，请减少卡面图片大小。");
   const salt = (await randomWords(16)).toString();
   const iv = await randomWords(16);
   const keys = await backupKeysV4(password, salt);

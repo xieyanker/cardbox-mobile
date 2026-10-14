@@ -13,6 +13,8 @@ const files = vi.hoisted(() => ({
   remove: vi.fn(),
   copy: vi.fn(),
   counter: 0,
+  size: 20,
+  read: vi.fn(async () => "aW1hZ2U="),
 }));
 vi.mock("react-native", () => ({ Platform: { OS: "android" } }));
 vi.mock("expo-crypto", () => ({
@@ -28,9 +30,9 @@ vi.mock("expo-file-system/legacy", () => ({
   deleteAsync: files.remove,
   getInfoAsync: async (uri: string) => ({
     exists: uri !== "file:///cache/missing.jpg",
-    size: 20,
+    size: files.size,
   }),
-  readAsStringAsync: async () => "aW1hZ2U=",
+  readAsStringAsync: files.read,
 }));
 const card: Card = {
   id: "one",
@@ -46,12 +48,23 @@ const card: Card = {
 beforeEach(() => {
   vi.clearAllMocks();
   files.counter = 0;
+  files.size = 20;
   files.write.mockReset().mockResolvedValue(undefined);
   files.remove.mockReset().mockResolvedValue(undefined);
   files.copy.mockReset().mockResolvedValue(undefined);
 });
 
 describe("card images and backup restores", () => {
+  it("rejects aggregate oversized images before reading any image data", async () => {
+    files.size = 16 * 1024 * 1024;
+    const cards = [card, { ...card, id: "two" }].map((c) => ({
+      ...c,
+      image: "file:///cache/large.jpg",
+    }));
+    await expect(buildBackupCards(cards)).rejects.toThrow("50 MB");
+    expect(files.read).not.toHaveBeenCalled();
+    expect(await buildBackupCards(cards, false)).toHaveLength(2);
+  });
   it("resolves old app-container image references without altering arbitrary external paths", () => {
     expect(
       resolveOwnedImageUri(

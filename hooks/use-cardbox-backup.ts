@@ -14,8 +14,12 @@ import {
 import { cleanupPreviousImages as cleanupCardImages } from "../lib/cardbox-image-maintenance";
 import { decryptBackup, encryptBackup } from "../lib/cardbox-security";
 import { backupChanges } from "../lib/cardbox-backup-record";
-import { preferenceSchema } from "../lib/cardbox-preferences";
+import {
+  preferenceSchema,
+  restorePreferences,
+} from "../lib/cardbox-preferences";
 import { mergeCards } from "../shared/cardbox-tools";
+import { utf8Bytes } from "../shared/cardbox-backup-size";
 import { useCardboxBackupRecord } from "./use-cardbox-backup-record";
 import type { useCardboxPreferences } from "./use-cardbox-preferences";
 import type { useCardboxCards } from "./use-cardbox-cards";
@@ -84,7 +88,18 @@ export function useCardboxBackup({
     if (!(await authenticate("验证身份后导出全部卡片"))) return;
     setBackupProgress("正在读取卡片和图片…");
     const snapshot = await storage.read();
-    const backup = await buildBackupCards(snapshot, includeImages);
+    const savedPreferences = preferences.ready
+      ? {
+          favorites: preferences.favorites,
+          lastSelectedId: preferences.lastSelectedId,
+          privateImages: preferences.privateImages,
+        }
+      : undefined;
+    const backup = await buildBackupCards(
+      snapshot,
+      includeImages,
+      utf8Bytes(JSON.stringify(savedPreferences ?? {})) + 32,
+    );
     // Give the progress indicator a frame before password derivation starts.
     await new Promise((resolve) => setTimeout(resolve, 0));
     setBackupProgress("正在加密备份，请稍候…");
@@ -92,13 +107,7 @@ export function useCardboxBackup({
       JSON.stringify({
         version: 3,
         cards: backup,
-        preferences: preferences.ready
-          ? {
-              favorites: preferences.favorites,
-              lastSelectedId: preferences.lastSelectedId,
-              privateImages: preferences.privateImages,
-            }
-          : undefined,
+        preferences: savedPreferences,
       }),
       password,
     );
@@ -247,13 +256,15 @@ export function useCardboxBackup({
     if (!isAccessible()) return;
     await cleanupPreviousImages([...previous, ...restored.cards], merged.cards);
     let preferenceWarning = "";
-    if (parsed.preferences && !mergeImport) {
+    {
       await preferences
-        .update((value) => ({
-          ...parsed.preferences!,
-          privateImages:
-            value.privateImages || parsed.preferences!.privateImages,
-        }))
+        .update((value) =>
+          restorePreferences(
+            value,
+            mergeImport ? undefined : parsed.preferences,
+            merged.cards,
+          ),
+        )
         .catch(() => {
           preferenceWarning = "\n常用卡设置保存失败，卡片已恢复，请稍后重试。";
         });
@@ -291,12 +302,14 @@ export function useCardboxBackup({
     if (storage.ready) await storage.update(() => point.cards);
     else await storage.recover(point.cards);
     let preferenceWarning = "";
-    if (point.preferences)
-      await preferences
-        .update(() => point.preferences!)
-        .catch(() => {
-          preferenceWarning = "常用卡设置保存失败，请稍后重试。";
-        });
+
+    await preferences
+      .update((value) =>
+        restorePreferences(value, point.preferences, point.cards),
+      )
+      .catch(() => {
+        preferenceWarning = "常用卡设置保存失败，请稍后重试。";
+      });
     await cleanupPreviousImages(previous, point.cards);
     setSelectedId(point.cards[0]?.id ?? null);
     clearTransient();
