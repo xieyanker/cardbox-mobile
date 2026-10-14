@@ -23,6 +23,7 @@ import { CardImageEditor } from "@/components/cardbox/card-image-editor";
 import { CardGrid } from "@/components/cardbox/card-grid";
 import { CardSort } from "@/components/cardbox/card-sort";
 import { BackupPanel } from "@/components/cardbox/backup-panel";
+import { ImportComparison } from "@/components/cardbox/import-comparison";
 import { useCardboxStyles } from "@/components/cardbox/styles";
 import { useCardboxAccess } from "@/hooks/use-cardbox-access";
 import { useCardboxCards } from "@/hooks/use-cardbox-cards";
@@ -575,7 +576,16 @@ export default function HomeScreen() {
         />
       )}
 
-      {(screen === "export" || screen === "import") && (
+      {screen === "import" && backup.importPlan && (
+        <ImportComparison
+          plan={backup.importPlan}
+          busy={busy}
+          onChoose={backup.setImportChoice}
+          onConfirm={() => void run(backup.confirmImportReview)}
+          onCancel={backup.cancelImportReview}
+        />
+      )}
+      {(screen === "export" || (screen === "import" && !backup.importPlan)) && (
         <BackupPanel
           importing={screen === "import"}
           busy={busy}

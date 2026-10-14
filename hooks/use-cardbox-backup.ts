@@ -18,7 +18,12 @@ import {
   preferenceSchema,
   restorePreferences,
 } from "../lib/cardbox-preferences";
-import { mergeCards } from "../shared/cardbox-tools";
+import {
+  planCardImport,
+  materializeImport,
+  type ImportChoices,
+  type ImportPlan,
+} from "../shared/cardbox-import";
 import { utf8Bytes } from "../shared/cardbox-backup-size";
 import { useCardboxBackupRecord } from "./use-cardbox-backup-record";
 import type { useCardboxPreferences } from "./use-cardbox-preferences";
@@ -26,6 +31,11 @@ import type { useCardboxCards } from "./use-cardbox-cards";
 import type { useCardboxAccess } from "./use-cardbox-access";
 import type { CardboxOperations } from "./use-cardbox-operations";
 import type { CardboxNavigation } from "./use-cardbox-navigation";
+
+const importSchema = backupSchema.extend({
+  preferences: preferenceSchema.optional(),
+});
+type ImportData = ReturnType<typeof importSchema.parse>;
 
 export function useCardboxBackup({
   storage,
@@ -56,6 +66,22 @@ export function useCardboxBackup({
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [includeImages, setIncludeImages] = useState(true);
   const [mergeImport, setMergeImport] = useState(false);
+  const [importReview, setImportReview] = useState<{
+    data: ImportData;
+    current: Card[];
+  } | null>(null);
+  const [importChoices, setImportChoices] = useState<ImportChoices>({});
+  const importPlan = useMemo(
+    () =>
+      importReview
+        ? planCardImport(
+            importReview.current,
+            importReview.data.cards,
+            importChoices,
+          )
+        : null,
+    [importReview, importChoices],
+  );
   const [backupAsset, setBackupAsset] =
     useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const changes = useMemo(
@@ -67,6 +93,8 @@ export function useCardboxBackup({
     setPasswordConfirmation("");
     setPasswordVisible(false);
     setBackupAsset(null);
+    setImportReview(null);
+    setImportChoices({});
   }, []);
   useEffect(() => {
     clearTransient();
@@ -182,6 +210,8 @@ export function useCardboxBackup({
   }
 
   async function chooseBackup() {
+    setImportReview(null);
+    setImportChoices({});
     const result = await DocumentPicker.getDocumentAsync({
       type: "*/*",
       copyToCacheDirectory: true,
@@ -206,26 +236,36 @@ export function useCardboxBackup({
     } catch {
       throw new Error("密码不正确或备份已损坏。");
     }
-    const parsed = backupSchema
-      .extend({ preferences: preferenceSchema.optional() })
-      .parse(input);
+    const parsed = importSchema.parse(input);
     ensureAccessible();
     const currentCards = storage.ready ? await storage.read() : [];
-    const seenNumbers = new Set(
-      currentCards.map((card) => card.number.replace(/\s/g, "")),
-    );
-    const toImport = mergeImport
-      ? parsed.cards.filter((card) => {
-          const number = card.number.replace(/\s/g, "");
-          if (seenNumbers.has(number)) return false;
-          seenNumbers.add(number);
-          return true;
-        })
-      : parsed.cards;
-    if (mergeImport && currentCards.length + toImport.length > 1000)
-      throw new Error("合并后超过 1000 张卡片，请先整理卡包或选择替换方式。");
+    const plan = mergeImport
+      ? planCardImport(currentCards, parsed.cards)
+      : null;
+    if (plan?.conflicts.length) {
+      setImportChoices({});
+      setImportReview({ data: parsed, current: currentCards });
+      setPassword("");
+      setPasswordVisible(false);
+      return;
+    }
+    await applyImport(parsed, currentCards, plan);
+  }
+
+  async function confirmImportReview() {
+    if (!importReview || !importPlan) return;
+    if (!(await authenticate("验证身份后应用导入选择"))) return;
+    await applyImport(importReview.data, importReview.current, importPlan);
+  }
+
+  async function applyImport(
+    parsed: ImportData,
+    currentCards: Card[],
+    plan: ImportPlan | null,
+  ) {
+    const toImport = plan ? plan.toImport : parsed.cards;
     const description = storage.ready
-      ? `${mergeImport ? "合并" : "替换"}：备份中 ${parsed.cards.length} 张卡片、${parsed.cards.filter((card) => card.imageData || card.image).length} 张卡面。${mergeImport ? `新增 ${toImport.length} 张，重复卡号跳过。` : "将替换当前卡包，操作前保存加密恢复点。"}\n${parsed.cards
+      ? `${plan ? "合并" : "替换"}：备份中 ${parsed.cards.length} 张卡片、${parsed.cards.filter((card) => card.imageData || card.image).length} 张卡面。${plan ? `新增 ${plan.added} 张，更新 ${plan.updated} 张，跳过 ${plan.skipped} 项。操作前保存加密恢复点。` : "将替换当前卡包，操作前保存加密恢复点。"}\n${parsed.cards
           .slice(0, 5)
           .map((card) => card.name)
           .join("、")}${parsed.cards.length > 5 ? "…" : ""}\n是否继续？`
@@ -233,6 +273,13 @@ export function useCardboxBackup({
     setBackupProgress("");
     if (!(await askConfirmation("恢复备份", description))) return;
     ensureAccessible();
+    if (
+      storage.ready &&
+      JSON.stringify(await storage.read()) !== JSON.stringify(currentCards)
+    ) {
+      setImportReview(null);
+      throw new Error("卡包已变化，请重新选择备份并比较后导入。");
+    }
     setBackupProgress("正在恢复卡片和图片…");
     if (storage.ready)
       await storage.createRestorePoint({
@@ -242,10 +289,13 @@ export function useCardboxBackup({
       });
     const restored = await restoreBackupCards({ ...parsed, cards: toImport });
     const previous = currentCards;
-    const merged = mergeImport
-      ? mergeCards(previous, restored.cards, randomUUID)
-      : { cards: restored.cards, added: restored.cards.length, skipped: 0 };
+    let merged: { cards: Card[] };
     try {
+      merged = {
+        cards: plan
+          ? materializeImport(plan, restored.cards, randomUUID)
+          : restored.cards,
+      };
       ensureAccessible();
       if (storage.ready) await storage.update(() => merged.cards);
       else await storage.recover(merged.cards);
@@ -261,7 +311,7 @@ export function useCardboxBackup({
         .update((value) =>
           restorePreferences(
             value,
-            mergeImport ? undefined : parsed.preferences,
+            plan ? undefined : parsed.preferences,
             merged.cards,
           ),
         )
@@ -270,7 +320,7 @@ export function useCardboxBackup({
         });
     }
     const selected =
-      !mergeImport &&
+      !plan &&
       merged.cards.some(
         (card) => card.id === parsed.preferences?.lastSelectedId,
       )
@@ -281,8 +331,8 @@ export function useCardboxBackup({
     openPage("home");
     notify(
       "恢复完成",
-      mergeImport
-        ? `新增 ${merged.added} 张卡片，跳过 ${parsed.cards.length - merged.added} 张重复卡片。`
+      plan
+        ? `新增 ${plan.added} 张卡片，更新 ${plan.updated} 张，跳过 ${plan.skipped} 项。${preferenceWarning}`
         : `已恢复 ${merged.cards.length} 张卡片。${preferenceWarning}`,
     );
   }
@@ -344,6 +394,11 @@ export function useCardboxBackup({
     exportBackup: () => withProgress(exportBackup),
     importBackup: () => withProgress(importBackup),
     restorePreviousPack: () => withProgress(restorePreviousPack),
+    importPlan,
+    setImportChoice: (id: string, choice: "keep" | "replace") =>
+      setImportChoices((value) => ({ ...value, [id]: choice })),
+    cancelImportReview: clearTransient,
+    confirmImportReview: () => withProgress(confirmImportReview),
   };
 }
 export type CardboxBackup = ReturnType<typeof useCardboxBackup>;

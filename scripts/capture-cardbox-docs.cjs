@@ -31,6 +31,8 @@ const names = new Set([
   "backup-export",
   "backup-import",
   "backup-preview",
+  "import-comparison",
+  "credit-dates",
   "browse-settings",
   "lock-settings",
   "storage-management",
@@ -162,6 +164,10 @@ const report = {
       await label("到期时间").fill(expiry);
       await label("备注").fill("文档演示用虚构卡片");
       await page.getByRole("radio", { name: type, exact: true }).click();
+      if (type === "信用卡") {
+        await label("账单日").fill("5");
+        await label("还款日").fill("25");
+      }
       await label("保存卡片").click();
       await text("CardBox").waitFor();
     }
@@ -208,6 +214,11 @@ const report = {
     await label("查看卡片详情").click();
     await label("验证并显示敏感信息").waitFor();
     await shot("card-details");
+    await text("修改").click();
+    await label("账单日").evaluate((element) =>
+      element.scrollIntoView({ block: "center" }),
+    );
+    await shot("credit-dates");
     await home();
     await menu("卡片排序");
     await shot("card-sort");
@@ -268,6 +279,11 @@ const report = {
     await text("0 张卡片新增或修改，0 张已删除").waitFor();
     await shot("backup-export");
     await home();
+    await select("旅行信用卡");
+    await label("查看卡片详情").click();
+    await text("修改").click();
+    await label("账单日").fill("12");
+    await label("保存卡片").click();
     await menu("导入备份");
     const choosing = page.waitForEvent("filechooser");
     await text("选择备份文件").click();
@@ -276,6 +292,9 @@ const report = {
     await label("备份密码").fill("CardBox-Demo-2026!");
     await shot("backup-import");
     await text("开始导入").click();
+    await text("导入冲突比较").waitFor();
+    await shot("import-comparison");
+    await text("确认导入选择").click();
     await text("恢复备份").waitFor();
     await shot("backup-preview");
     await text("取消").click();

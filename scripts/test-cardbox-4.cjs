@@ -440,14 +440,12 @@ const report = { checks: [], errors: [] };
         await choose(filename);
         await label("备份密码").fill("a");
         await text("开始导入").click();
+        await text("导入冲突比较").waitFor();
+        await text("确认导入选择").click();
         await text("恢复备份").waitFor();
         await text("确认").click();
         await text("恢复完成").waitFor();
-        assert(
-          (await page.locator("body").innerText()).includes(
-            "跳过 1 张重复卡片",
-          ),
-        );
+        assert((await page.locator("body").innerText()).includes("跳过 1 项"));
       },
     );
     await check(

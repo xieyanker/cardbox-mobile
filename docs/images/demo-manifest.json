@@ -1,8 +1,8 @@
 {
   "version": "4.0.0",
-  "sourceCommit": "e382077a399ef34686b709178d5b51d0c7f95ca5",
+  "sourceCommit": "3bd57cedf7a956da0a15628754c8e2e6bd4b4940",
   "sourceWorkingTreeDirty": true,
-  "capturedAt": "2026-10-13T01:39:07.000Z",
+  "capturedAt": "2026-10-14T00:58:14.227Z",
   "viewport": {
     "width": 390,
     "height": 844
@@ -23,6 +23,7 @@
     "all-cards.png",
     "all-cards-search.png",
     "card-details.png",
+    "credit-dates.png",
     "card-sort.png",
     "card-sort-drag.png",
     "card-editor.png",
@@ -32,6 +33,7 @@
     "storage-management.png",
     "backup-export.png",
     "backup-import.png",
+    "import-comparison.png",
     "backup-preview.png",
     "home-dark.png"
   ],

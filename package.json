@@ -16,6 +16,7 @@
     "test:web": "node scripts/test-cardbox-web.cjs",
     "test:browse": "node scripts/test-cardbox-browse.cjs",
     "test:4": "node scripts/test-cardbox-4.cjs",
+    "test:import": "node scripts/test-cardbox-import.cjs",
     "test:sort": "node scripts/test-cardbox-sort.cjs",
     "docs:images": "node scripts/capture-cardbox-docs.cjs",
     "benchmark:backup": "node scripts/benchmark-cardbox-backup.cjs",

@@ -38,7 +38,10 @@ describe("card tools and new independent preferences", () => {
       lastSelectedId: "missing",
       privateImages: false,
     };
-    expect(restorePreferences(current, saved, [card])).toEqual({ ...current, lastSelectedId: null });
+    expect(restorePreferences(current, saved, [card])).toEqual({
+      ...current,
+      lastSelectedId: null,
+    });
   });
   it("allows a new favorite after 1000 deleted favorites and does not mutate input", async () => {
     const stale = {

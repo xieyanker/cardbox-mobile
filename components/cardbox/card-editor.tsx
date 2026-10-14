@@ -144,6 +144,34 @@ export function CardEditor({
             editable={!busy}
           />
         </View>
+        {card.type === "credit" && (
+          <View style={styles.field}>
+            {(
+              [
+                ["billingDay", "账单日"],
+                ["repaymentDay", "还款日"],
+              ] as const
+            ).map(([key, label]) => (
+              <View key={key} style={styles.field}>
+                <Text style={styles.fieldLabel}>{label}</Text>
+                <TextInput
+                  accessibilityLabel={label}
+                  value={card[key] ?? ""}
+                  onChangeText={(value) => set(key, value)}
+                  maxLength={2}
+                  keyboardType="number-pad"
+                  placeholder="每月几号（1—31，可选）"
+                  placeholderTextColor={colors.muted}
+                  style={styles.input}
+                  editable={!busy}
+                />
+              </View>
+            ))}
+            <Text style={styles.muted}>
+              仅记录日期，不发送提醒；实际账期以银行账单为准。
+            </Text>
+          </View>
+        )}
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>备注</Text>
           <TextInput

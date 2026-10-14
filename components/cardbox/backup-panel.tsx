@@ -79,7 +79,7 @@ export function BackupPanel(props: Props) {
             ))}
           </View>
           <Text style={styles.muted}>
-            合并保留现有卡片，重复卡号跳过。替换或合并前保存本机加密恢复点。
+            合并时可比较重复卡号的资料，默认保留当前条目。替换或合并前保存本机加密恢复点。
           </Text>
         </>
       ) : (

@@ -2,7 +2,7 @@
 
 [项目首页](../README.md) · [文档目录](README.md) · [手机调试与验收](TESTING.md)
 
-更新日期：2026-10-13。当前 **4.0.0**（Android 构建编号 8），已约定功能开发完成，待用户真机验收。已发布 APK 为 3.0.2。历史提交与旧验证结果见[归档](history/VALIDATION_2_3.md)，本轮实现证据见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。
+更新日期：2026-10-14。当前 **4.0.0**（Android 构建编号 8），含导入冲突比较与信用卡日期记录，待用户真机验收。已发布 APK 为 3.0.2。历史提交与旧验证结果见[归档](history/VALIDATION_2_3.md)，本轮实现证据见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。
 
 ## 准备环境
 
@@ -46,6 +46,7 @@ pnpm test
 $env:CARDBOX_TEST_URL = 'http://localhost:8084/'
 pnpm test:web
 pnpm test:4
+pnpm test:import
 pnpm test:sort
 pnpm test:browse
 ```
@@ -54,6 +55,7 @@ pnpm test:browse
 | ------------- | ------------------------------------------------------- |
 | `test:web`    | 添加、编辑、排序、导入导出及基本布局回归。              |
 | `test:4`      | 4.0 新功能、旧数据兼容和关键失败场景。                  |
+| `test:import` | 冲突取消 / 失败 / 采用备份、日期备份往返、隐私快照与收藏清理。 |
 | `test:sort`   | 80 张虚构卡片跨屏拖动、边缘滚动、取消、失败及触屏操作。 |
 | `test:browse` | 钱包、堆叠、聚焦的手势、边界、记忆与主题。              |
 

@@ -32,6 +32,14 @@ export const cardSchema = z.object({
   image: z.string().max(MAX_BACKUP_BYTES).optional(),
   tone: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   type: z.enum(["debit", "credit", "virtual"]).default("debit"),
+  billingDay: z
+    .string()
+    .regex(/^(?:0?[1-9]|[12]\d|3[01])?$/)
+    .optional(),
+  repaymentDay: z
+    .string()
+    .regex(/^(?:0?[1-9]|[12]\d|3[01])?$/)
+    .optional(),
 });
 
 export type Card = z.infer<typeof cardSchema>;
@@ -70,6 +78,13 @@ export function validateCardDraft(card: Card): string | null {
     return "CVV 应为 3 或 4 位数字，也可以留空。";
   if (card.expiry && !/^(0[1-9]|1[0-2])\/\d{2}$/.test(card.expiry))
     return "到期时间请使用 MM/YY 格式，例如 12/30。";
+  for (const [label, day] of [
+    ["账单日", card.billingDay],
+    ["还款日", card.repaymentDay],
+  ]) {
+    if (day && !/^(0?[1-9]|[12]\d|3[01])$/.test(day))
+      return `${label}请填写 1 至 31，也可以留空。`;
+  }
   if (!cardSchema.safeParse(card).success)
     return "卡片字段格式无效或内容过长。";
   return null;

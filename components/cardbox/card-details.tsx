@@ -77,6 +77,22 @@ export function CardDetails({
           ],
           ["CVV", showSensitive ? card.cvv || "未填写" : "•••"],
           ["到期", card.expiry || "未填写"],
+          ...(card.type === "credit"
+            ? [
+                [
+                  "账单日",
+                  card.billingDay
+                    ? `每月 ${Number(card.billingDay)} 日`
+                    : "未填写",
+                ],
+                [
+                  "还款日",
+                  card.repaymentDay
+                    ? `每月 ${Number(card.repaymentDay)} 日`
+                    : "未填写",
+                ],
+              ]
+            : []),
           ["备注", card.note || "暂无备注"],
         ].map(([label, value]) => (
           <View key={label} style={styles.information}>
