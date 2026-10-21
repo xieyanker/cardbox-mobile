@@ -2,7 +2,7 @@
 
 [项目首页](../README.md) · [文档目录](README.md) · [手机调试与验收](TESTING.md)
 
-更新日期：2026-10-21。当前 **4.0.0**（Android 构建编号 8），含导入冲突比较、信用卡日期记录与手机调试反馈修复，待用户真机复测。已发布 APK 为 3.0.2。历史提交与旧验证结果见[归档](history/VALIDATION_2_3.md)，本轮实现证据见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。
+更新日期：2026-10-21。当前 **4.0.0**（Android 构建编号 8）已获用户验收与封板授权，源码标签 `4.0.0`，APK 待用户在 Expo 构建后上传 GitHub Releases。已发布 APK 为 3.0.2。历史提交与旧验证结果见[归档](history/VALIDATION_2_3.md)，本轮实现证据见 [4.0 开发记录](CARDBOX_4.0_REQUIREMENTS.md)。
 
 ## 准备环境
 
@@ -101,7 +101,7 @@ node scripts/capture-cardbox-docs.cjs
 
 ## Android 构建
 
-普通 JavaScript 与界面修改先通过 Expo Go / Fast Refresh 调试。4.0 尚未生成 APK；构建和真机验收分别记录，任何 EAS 云构建需用户明确确认后执行。
+普通 JavaScript 与界面修改先通过 Expo Go / Fast Refresh 调试。4.0.0 已经用户确认源码封板；用户将自行在 Expo 构建 APK，本轮不由代理触发云构建。构建产物、签名、安装 / 覆盖升级与发布记录在取得 APK 后补充。
 
 ### EAS 云构建
 
@@ -114,7 +114,7 @@ pnpm dlx eas-cli@latest login
 pnpm dlx eas-cli@latest build --platform android --profile preview
 ```
 
-从 EAS 网页发起时，Git ref 选择本次待构建提交所在的 `main`，平台 Android，profile 填 `preview`，Environment 保持 Default。此配置未启用自动提交商店，也不是 development build。
+从 EAS 网页发起本次封板构建时，Git ref 选择 `4.0.0` 标签（如网页只提供分支，选择尚未继续开发的 `main` 并核对提交与标签一致），平台 Android，profile 填 `preview`，Environment 保持 Default。此配置未启用自动提交商店，也不是 development build。取得 APK 后将构建链接或文件交给代理，核对版本 `4.0.0`、构建编号 8、包名 `com.app.cardboxmobile` 与发布签名，再上传 GitHub Releases 并更新下载入口。
 
 ### 本机编译
 
