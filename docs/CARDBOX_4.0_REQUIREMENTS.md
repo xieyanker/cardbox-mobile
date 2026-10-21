@@ -1,6 +1,16 @@
 # CardBox 4.0.0 开发记录
 
-更新日期：2026-10-21。当前代码版本为 `4.0.0`（Android 构建编号 8），用户已确认当前手机测试全部通过并明确授权源码封板，发布标签 `4.0.0`；APK 待用户在 Expo 构建。
+更新日期：2026-10-21。当前代码版本为 `4.0.0`（Android 构建编号 8），用户已确认当前手机测试全部通过并明确授权源码封板，发布标签 `4.0.0`；用户提供的 Expo APK 已发布到 GitHub Releases。
+
+## 2026-10-21 APK 与 GitHub Release
+
+- 用户提供 Expo 构建产物 `application-9d27e0ce-fbe3-424f-baa1-65b5b2a3e2d0.apk`；以 `CardBox-4.0.0-android.apk` 上传到 [4.0.0 Release](https://github.com/xieyanker/cardbox-mobile/releases/tag/4.0.0)，并更新当前下载入口。历史 3.0.2 附件保留。
+- 包内核验：版本 `4.0.0`、Android 构建编号 `8`、包名 `com.app.cardboxmobile`、非 debuggable；最低 Android API 24，包含 `arm64-v8a` / `armeabi-v7a`。
+- APK 大小 51,461,304 字节；SHA-256：`608c75e8a60914302f4ece2132e53c20a17f6ee970880d00984d354d474ba657`。
+- ZIP CRC、APK v2 签名与受保护内容摘要通过；签名证书 SHA-256：`8538396a6257f5c6c9fa36f82b08703178f5d3c86c35c48bda29e2a05f88f8bd`，与已发布的 3.0.2 APK 相同。用于比对的旧 APK 整体摘要与 GitHub 3.0.2 附件 digest 相符。
+- 核验方法依据 [Android v2 签名格式](https://source.android.com/docs/security/features/apksigning/v2)，由本地脚本解析 manifest、验证签名 / 分块内容摘要；未执行设备安装。用户此前的手机验收环境仍记为 Expo Go，实际安装 / 覆盖升级和新安装资源待用户核验。
+- 源码标签 `4.0.0` 保持指向封板提交 `99d83d9726944c5345be9aa764ec3b86d6dd1506`，发布文档另在 `main` 提交；本次没有重建 APK 或修改应用代码。
+- GitHub 发布后核验：Release 已发布为正式版本且是最新版本；附件状态 `uploaded`、大小及 GitHub 返回的 SHA-256 digest 均与本地文件一致。仓库为私有，下载需登录有访问权限的 GitHub 账号。发布文档 TypeScript 与格式 / 差异检查通过，ESLint 0 错误 / 7 条原模板警告；14 份文档的 156 处本地引用、25 处章节跳转与受保护图片校验通过。本次仅更新发布说明，沿用封板时的业务回归基线。
 
 ## 2026-10-21 验收与封板
 

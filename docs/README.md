@@ -2,7 +2,7 @@
 
 [返回项目首页](../README.md)
 
-当前版本 **4.0.0**（Android 构建编号 8）已于 2026-10-21 经用户确认验收并授权封板，源码标签 `4.0.0`；APK 待用户在 Expo 构建后上传 GitHub Releases。已发布 APK 为 **3.0.2**；下载入口见[项目首页](../README.md#版本与下载)。
+当前版本 **4.0.0**（Android 构建编号 8）已于 2026-10-21 经用户确认验收并授权封板，源码标签 `4.0.0`；用户提供的 Expo APK 已上传 GitHub Releases。当前下载为 **4.0.0**，3.0.2 保留为历史版本；入口见[项目首页](../README.md#版本与下载)。
 
 ## 使用与调试
 
@@ -36,6 +36,7 @@
 
 ## 外部链接
 
+- [4.0.0 GitHub Release](https://github.com/xieyanker/cardbox-mobile/releases/tag/4.0.0)：当前 Android 安装包与发布说明。
 - [3.0.2 GitHub Release](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2)：已发布安装包与发布说明。
 - [开发环境官方参考](DEVELOPMENT.md#官方参考)：Expo、EAS 与 Android 环境资料。
 - [浏览模式交互参考](design/BROWSE_MODES.md#交互参考)：设计参考来源，具体实现以本仓库说明为准。

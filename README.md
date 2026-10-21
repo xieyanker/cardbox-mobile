@@ -6,16 +6,18 @@
 
 **把银行卡装进自己的数字卡包。** 无需账号，资料保存在本机，支持自定义卡面、四种浏览模式、敏感信息保护和密码加密备份。
 
-[下载 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk) · [使用说明](docs/FEATURES.md) · [连接手机调试](docs/TESTING.md#连接手机) · [文档目录](docs/README.md)
+[下载 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/4.0.0/CardBox-4.0.0-android.apk) · [使用说明](docs/FEATURES.md) · [连接手机调试](docs/TESTING.md#连接手机) · [文档目录](docs/README.md)
 
 ## 版本与下载
 
-| 版本                   | 状态                                                 | 入口                                                                                                                                                                                     |
-| ---------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **3.0.2**              | 已发布 Android APK                                   | [下载安装包](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk) · [发布说明](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) |
-| **4.0.0** · 构建编号 8 | 用户验收通过，源码封板标签 `4.0.0`；APK 待构建和发布 | [本轮改进](docs/CARDBOX_4.0_REQUIREMENTS.md) · [验收记录](docs/TESTING.md#40-真机验收清单)                                                                                               |
+| 版本                   | 状态                                 | 入口                                                                                                                                                                                         |
+| ---------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **4.0.0** · 构建编号 8 | 当前 Android APK，用户已确认源码封板 | [下载安装包](https://github.com/xieyanker/cardbox-mobile/releases/download/4.0.0/CardBox-4.0.0-android.apk) · [发布说明](https://github.com/xieyanker/cardbox-mobile/releases/tag/4.0.0)     |
+| **3.0.2**              | 历史 Android APK                     | [历史安装包](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk) · [历史发布说明](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) |
 
-当前源码 **4.0.0** 已于 2026-10-21 经用户确认封板。下方功能与演示图对应 4.0.0，下载的 3.0.2 不包含全部新功能；4.0.0 APK 构建完成后另行上传 GitHub Releases，届时更新下载入口。
+当前 **4.0.0** 已于 2026-10-21 经用户确认源码封板，由用户在 Expo 构建 APK 并作为 GitHub Release 附件发布。包内版本、包名、文件完整性和 v2 签名已核验，签名证书与 3.0.2 相同；独立安装及覆盖升级另待实际核验。下方功能与演示图对应 4.0.0。
+
+仓库为私有，下载安装包时需登录有仓库访问权限的 GitHub 账号。
 
 ## 界面预览
 

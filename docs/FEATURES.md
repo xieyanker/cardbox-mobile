@@ -1,8 +1,8 @@
 # CardBox 功能与使用说明
 
-适用版本：**4.0.0**（Android 构建编号 8），用户已确认验收并授权源码封板，标签 `4.0.0`；APK 待构建发布。更新日期：2026-10-21。
+适用版本：**4.0.0**（Android 构建编号 8），用户已确认验收并授权源码封板，APK 已在 GitHub Releases 发布。更新日期：2026-10-21。
 
-[返回项目首页](../README.md) · [文档目录](README.md) · [下载已发布的 3.0.2 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/3.0.2/CardBox-3.0.2-android.apk)
+[返回项目首页](../README.md) · [文档目录](README.md) · [下载 4.0.0 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/download/4.0.0/CardBox-4.0.0-android.apk)
 
 CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可以管理借记卡、信用卡和虚拟卡，选择不同的浏览方式，并通过密码备份迁移或恢复卡包。
 
@@ -176,3 +176,5 @@ CardBox 是一个资料保存在本机的数字卡包。无需创建账号，可
 演示图于 2026-10-14 在 `main` 工作目录接入导入比较与信用卡日期后重新采集，共 25 张。仅在截图时隐藏 Expo 开发刷新浮标，没有改写应用布局或功能。八张卡片通过添加表单建立，类型、常用、搜索、图片编辑、排序与备份均通过实际页面操作展示。用户真机照片和原始设计图按 SHA-256 校验保持原样。采集脚本为 `scripts/capture-cardbox-docs.cjs`，版本、基线提交、工作目录修改状态、视口、文件清单与受保护图片哈希见 [采集记录](images/demo-manifest.json)。
 
 已发布的 3.0.2 Android APK 已通过 EAS 构建并作为 [3.0.2 Release 附件](https://github.com/xieyanker/cardbox-mobile/releases/tag/3.0.2) 发布。构建成功与完整真机验收分别记录，验收进度见 [Android 调试与验收](TESTING.md)。
+
+2026-10-21 发布 [4.0.0 Android APK](https://github.com/xieyanker/cardbox-mobile/releases/tag/4.0.0)：用户在 Expo 构建并提供文件，包内版本 4.0.0 / 构建编号 8，签名与 3.0.2 一致。用户已确认 Expo Go 功能验收与源码封板，APK 独立安装、覆盖升级及新安装图标效果另待实际核验。
