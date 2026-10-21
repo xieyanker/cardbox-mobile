@@ -22,6 +22,7 @@ import { CardEditor } from "@/components/cardbox/card-editor";
 import { CardImageEditor } from "@/components/cardbox/card-image-editor";
 import { CardGrid } from "@/components/cardbox/card-grid";
 import { CardSort } from "@/components/cardbox/card-sort";
+import { BrowseModeSort } from "@/components/cardbox/browse-mode-sort";
 import { BackupPanel } from "@/components/cardbox/backup-panel";
 import { ImportComparison } from "@/components/cardbox/import-comparison";
 import { useCardboxStyles } from "@/components/cardbox/styles";
@@ -40,7 +41,6 @@ import { useCardboxBackNavigation } from "@/hooks/use-cardbox-back-navigation";
 import { useCardboxStorageManagement } from "@/hooks/use-cardbox-storage-management";
 import { filterCards } from "@/shared/cardbox-tools";
 import { APP_AUTHOR, APP_REPOSITORY_URL, APP_VERSION } from "@/shared/app-info";
-import { BROWSE_MODES, DEFAULT_BROWSE_ORDER } from "@/shared/cardbox-browse";
 import { CARD_TYPES, lockTimeoutLabel } from "@/shared/cardbox";
 
 export default function HomeScreen() {
@@ -613,56 +613,11 @@ export default function HomeScreen() {
       )}
 
       {screen === "browse-settings" && (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.muted}>
-            调整首页显示模式的顺序，修改后自动保存。
-          </Text>
-          {browse.order.map((mode, index) => (
-            <View key={mode} style={styles.surface}>
-              <View style={styles.spaced}>
-                <Text style={[styles.text, styles.grow]}>
-                  {index + 1}. {BROWSE_MODES[mode]}
-                </Text>
-                {([-1, 1] as const).map((direction) => {
-                  const disabled =
-                    busy ||
-                    index + direction < 0 ||
-                    index + direction >= browse.order.length;
-                  return (
-                    <Pressable
-                      key={direction}
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled }}
-                      accessibilityLabel={`${direction < 0 ? "上移" : "下移"}${BROWSE_MODES[mode]}模式`}
-                      disabled={disabled}
-                      style={[styles.iconButton, disabled && styles.disabled]}
-                      onPress={() => {
-                        const next = [...browse.order];
-                        [next[index], next[index + direction]] = [
-                          next[index + direction],
-                          next[index],
-                        ];
-                        void run(() => browse.saveOrder(next));
-                      }}
-                    >
-                      {icon(direction < 0 ? "arrow-up" : "arrow-down", 20)}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-          <Pressable
-            accessibilityLabel="恢复默认模式顺序"
-            disabled={busy}
-            style={styles.outline}
-            onPress={() =>
-              void run(() => browse.saveOrder([...DEFAULT_BROWSE_ORDER]))
-            }
-          >
-            <Text style={styles.outlineText}>恢复默认顺序</Text>
-          </Pressable>
-        </ScrollView>
+        <BrowseModeSort
+          order={browse.order}
+          busy={busy}
+          onSave={(next) => void run(() => browse.saveOrder(next))}
+        />
       )}
 
       {screen === "settings" && (

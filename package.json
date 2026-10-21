@@ -18,6 +18,7 @@
     "test:4": "node scripts/test-cardbox-4.cjs",
     "test:import": "node scripts/test-cardbox-import.cjs",
     "test:sort": "node scripts/test-cardbox-sort.cjs",
+    "test:mobile-feedback": "node scripts/test-cardbox-mobile-feedback.cjs",
     "docs:images": "node scripts/capture-cardbox-docs.cjs",
     "benchmark:backup": "node scripts/benchmark-cardbox-backup.cjs",
     "benchmark:android": "node scripts/benchmark-cardbox-android.cjs",

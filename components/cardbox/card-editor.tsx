@@ -131,7 +131,6 @@ export function CardEditor({
             keyboardType="number-pad"
             placeholder="3 或 4 位安全码，可选"
             placeholderTextColor={colors.muted}
-            secureTextEntry
             style={styles.input}
             editable={!busy}
           />

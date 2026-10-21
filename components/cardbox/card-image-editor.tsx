@@ -44,6 +44,7 @@ export function CardImageEditor({
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [dragging, setDragging] = useState(false);
   useEffect(() => setLoaded(false), [image.uri]);
   const shot = useRef<View>(null);
   const panStart = useRef(center);
@@ -57,40 +58,51 @@ export function CardImageEditor({
   );
   const scale = width / geometry.width;
   const height = width / CARD_RATIO;
+  // Keep responder identity stable for the entire touch, including state updates.
+  const live = useRef({ busy, center, mask, scale, image, width, height });
+  live.current = { busy, center, mask, scale, image, width, height };
   const pan = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          !busy && Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
+        onStartShouldSetPanResponder: () => !live.current.busy,
         onPanResponderGrant: () => {
-          panStart.current = center;
+          panStart.current = live.current.center;
+          setDragging(true);
         },
-        onPanResponderMove: (_, gesture) =>
+        onPanResponderMove: (_, gesture) => {
+          const current = live.current;
           setCenter({
             x: Math.max(
               0,
               Math.min(
                 1,
-                panStart.current.x - gesture.dx / scale / image.width,
+                panStart.current.x -
+                  gesture.dx / current.scale / current.image.width,
               ),
             ),
             y: Math.max(
               0,
               Math.min(
                 1,
-                panStart.current.y - gesture.dy / scale / image.height,
+                panStart.current.y -
+                  gesture.dy / current.scale / current.image.height,
               ),
             ),
-          }),
+          });
+        },
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderRelease: () => setDragging(false),
+        onPanResponderTerminate: () => setDragging(false),
       }),
-    [busy, center, scale, image.width, image.height],
+    [],
   );
   const maskPan = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => !busy,
+        onStartShouldSetPanResponder: () => !live.current.busy,
         onPanResponderGrant: () => {
-          maskStart.current = mask;
+          maskStart.current = live.current.mask;
+          setDragging(true);
         },
         onPanResponderMove: (_, gesture) => {
           const start = maskStart.current;
@@ -99,16 +111,25 @@ export function CardImageEditor({
               ...start,
               x: Math.max(
                 0,
-                Math.min(1 - start.width, start.x + gesture.dx / width),
+                Math.min(
+                  1 - start.width,
+                  start.x + gesture.dx / live.current.width,
+                ),
               ),
               y: Math.max(
                 0,
-                Math.min(1 - start.height, start.y + gesture.dy / height),
+                Math.min(
+                  1 - start.height,
+                  start.y + gesture.dy / live.current.height,
+                ),
               ),
             });
         },
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderRelease: () => setDragging(false),
+        onPanResponderTerminate: () => setDragging(false),
       }),
-    [busy, mask, width, height],
+    [],
   );
   async function rotate() {
     if (busy) return;
@@ -193,8 +214,10 @@ export function CardImageEditor({
   return (
     <View style={styles.sheetBackdrop}>
       <ScrollView
+        style={{ flexGrow: 0, maxHeight: "100%" }}
         contentContainerStyle={styles.sheet}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!dragging}
       >
         <Text style={styles.title}>确认使用卡面</Text>
         <Text style={styles.muted}>
@@ -202,6 +225,7 @@ export function CardImageEditor({
         </Text>
         <View
           ref={shot}
+          testID="card-image-crop-surface"
           collapsable={false}
           {...pan.panHandlers}
           onLayout={({ nativeEvent }) => setWidth(nativeEvent.layout.width)}
@@ -210,6 +234,7 @@ export function CardImageEditor({
             aspectRatio: CARD_RATIO,
             overflow: "hidden",
             backgroundColor: "#141820",
+            ...(Platform.OS === "web" ? { touchAction: "none" as const } : {}),
           }}
         >
           <Image
