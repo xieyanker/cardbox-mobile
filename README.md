@@ -34,11 +34,11 @@
 演示图于 2026-10-14 同步导入比较和信用卡日期后重新采集，使用 4.0.0 Web 移动视口与虚构卡片，不代表 Android 真机验收。更多页面见[功能与使用说明](docs/FEATURES.md)。
 
 <details>
-<summary>用户提供的 Android 真机照片（原图保留）</summary>
+<summary>Android 钱包卡面与当前菜单示意</summary>
 
-<p align="center"><img src="docs/images/android-wallet-real.jpg" width="280" alt="用户提供的 Android 真机照片：钱包模式与首页菜单" /></p>
+<p align="center"><img src="docs/images/android-wallet-menu-4.0.png" width="280" alt="基于用户 Android 真机照片修图的 4.0 菜单示意，包含立即锁定与存储管理" /></p>
 
-这张照片保留原始内容，不作为 4.0 验收结果。
+基于用户提供的真机照片修图，将菜单更新为 4.0 的八项入口，补齐“立即锁定”和“存储管理”；这是菜单示意图，不作为新增 Android 真机截图或验收结果。[原始照片](docs/images/android-wallet-real.jpg)保留，[修图记录](docs/design/ANDROID_MENU_IMAGE.md)说明来源与检查。
 
 </details>
 
